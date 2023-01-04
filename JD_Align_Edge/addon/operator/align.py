@@ -190,8 +190,8 @@ class AE_OT_ALIGN(Operator):
         inter_diff = intersections[0]-intersections[1]
         
         if inter_diff.length < 0.001:
-            print("intersection found!")
-            print(intersections[0])
+            # print("intersection found!")
+            # print(intersections[0])
 
             return other_vert.co, intersections[0]
 
@@ -277,3 +277,17 @@ class AE_OT_ALIGN(Operator):
         shader_moving_lines.bind()
         shader_moving_lines.uniform_float("color", (1, 1, 1, 1.0))
         batch_moving_lines.draw(shader_moving_lines)
+
+
+        # where the point of the selected edge will be moved to upon confirm
+
+        gpu.state.point_size_set(10)
+
+        shader_dots = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": [self.new_vert_loc]})
+
+        shader_dots.bind()
+        shader_dots.uniform_float("color", (1, 1, 1, 1.0))
+        batch_dots.draw(shader_dots)
+
+        gpu.state.point_size_set(1)
