@@ -20,12 +20,13 @@ from ..utility.math import clamp
 class AE_OT_ALIGN(Operator):
     bl_idname = "object.ae_align"
     bl_label = "Align Edge"
-    bl_description = "Aligns Selected Edge to Active Edge"
+    bl_description = "Aligns Selected Edge to Active Edge by sliding it along one of the connected edges"
     bl_options = {'REGISTER','UNDO'}
 
     @classmethod
     def poll(cls, context):
-        if context.active_object.mode == 'EDIT':
+        if context.active_object.mode == 'EDIT' and len(context.selected_objects) == 1:
+
             return True
 
     def invoke(self, context, event):
@@ -33,6 +34,14 @@ class AE_OT_ALIGN(Operator):
         self.obj=context.active_object
         self.objdata = self.obj.data
         self.bm=bmesh.from_edit_mesh(self.obj.data)
+
+        if self.bm.select_mode != {'EDGE'}:
+            self.report({'ERROR'}, "Only works in Edge mode!")
+            return {'CANCELLED'}
+
+        if len(self.bm.select_history) != 2:
+            self.report({'ERROR'}, "Only works with 2 edges selected")
+            return {'CANCELLED'}
 
         active_verts = []
 
@@ -45,12 +54,12 @@ class AE_OT_ALIGN(Operator):
             if v.select and v not in active_verts:
                 selected_verts.append(v)
 
+        if len(selected_verts) != 2:
+            self.report({'ERROR'}, "Edges can not share a vertex")
+            return {'CANCELLED'}
+
         self.edge_selected = selected_verts
-        # self.edge_selected_coor = [vert.co for vert in selected_verts]
-
         self.edge_active = active_verts
-        # self.edge_active_coor = [vert.co for vert in active_verts]
-
 
         self.draw_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_3d, (context,), 'WINDOW', 'POST_VIEW')
         context.window_manager.modal_handler_add(self)
