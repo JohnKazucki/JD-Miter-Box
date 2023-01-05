@@ -61,6 +61,7 @@ class AE_OT_ALIGN(Operator):
         self.edge_active = active_verts
 
         self.mode = 'Slide'
+        self.flip = 1
 
         self.draw_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_3d, (context,), 'WINDOW', 'POST_VIEW')
         self.draw_UI_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_2d, (context, ), 'WINDOW', 'POST_PIXEL')
@@ -90,6 +91,11 @@ class AE_OT_ALIGN(Operator):
 
             self.update(event, context)
 
+        elif event.type == 'F' and event.value == 'PRESS':
+            if self.mode == 'Absolute':
+                self.flip *= -1
+                self.update(event, context)
+
         # Adjust
         elif event.type == 'MOUSEMOVE':
             self.update(event, context)
@@ -99,7 +105,7 @@ class AE_OT_ALIGN(Operator):
 
             self.remove_shaders(context)
 
-            if self.new_vert_loc == self.mouse_loc:
+            if self.error:
                 self.report({'ERROR'}, "No valid intersection point found!")
                 return {'FINISHED'}
 
@@ -112,6 +118,8 @@ class AE_OT_ALIGN(Operator):
 
 
     def update(self, event, context):
+        self.error = None
+
         self.mouse_loc = (event.mouse_region_x, event.mouse_region_y)
 
         self.closest_active_vert = self.get_closest_active_vert(context)
@@ -119,13 +127,26 @@ class AE_OT_ALIGN(Operator):
 
         self.moving_lines = self.get_moving_edge_lines(self.closest_active_vert, mov_vert_connected)
 
-        self.guide_edge, guide_vert = self.get_moving_edge_by_angle(context, self.closest_active_vert, mov_vert_connected, self.mouse_loc)
+        # MODE SPECIFIC CODE
+        # ------------------
 
-        other_vert_loc, self.new_vert_loc = self.find_intersection_point(self.closest_active_vert, guide_vert, self.edge_selected, self.edge_active)
+        if self.mode == 'Slide':
+            self.guide_edge, guide_vert = self.get_moving_edge_by_angle(context, self.closest_active_vert, mov_vert_connected, self.mouse_loc)
+            if guide_vert is None:
+                self.error = True
+                return
+
+            other_vert_loc, self.new_vert_loc = self.find_intersection_point(self.closest_active_vert, guide_vert, self.edge_selected, self.edge_active)
+            if self.new_vert_loc is None:
+                self.error = True
+                return
 
         if self.mode == 'Absolute':
+            other_vert = vert_pair_other_vert(self.edge_selected, self.closest_active_vert)
+            other_vert_loc = other_vert.co
             self.new_vert_loc = self.get_absolute_endpoint(self.closest_active_vert, self.edge_selected, self.edge_active)
-            
+
+        # ------------------
 
         self.new_edge = [other_vert_loc, self.new_vert_loc, self.closest_active_vert.co, self.new_vert_loc]
         
@@ -201,6 +222,9 @@ class AE_OT_ALIGN(Operator):
             dotproduct = V_to_mouse.dot(v_to_vert)
             dot_products.append(dotproduct)
 
+        if not dot_products:
+            return None, None
+
         closest_vert = moving_verts[dot_products.index(max(dot_products))]
 
         guide_edge = [active_vert.co, closest_vert.co]
@@ -229,6 +253,10 @@ class AE_OT_ALIGN(Operator):
         paral_co_1 = other_vert.co + dir_paral
 
         intersections = intersect_line_line(guide_co_0, guide_co_1, paral_co_0, paral_co_1)
+
+        if not intersections:
+            return other_vert.co, None
+
         inter_diff = intersections[0]-intersections[1]
         
         if inter_diff.length < 0.001:
@@ -238,7 +266,7 @@ class AE_OT_ALIGN(Operator):
             return other_vert.co, intersections[0]
         
         else:
-            return other_vert.co, self.mouse_loc
+            return other_vert.co, None
 
 
     def get_absolute_endpoint(self, moving_vert, selected_verts, active_verts):
@@ -257,9 +285,11 @@ class AE_OT_ALIGN(Operator):
 
         V_move_orig.normalize()
 
-        flip_dir = sign(V_guide_dir.dot(V_move_orig))
+        edge_dir = sign(V_guide_dir.dot(V_move_orig))
+        if not edge_dir:
+            edge_dir = 1
 
-        V_new_offset = V_guide_dir * V_move_len * flip_dir
+        V_new_offset = V_guide_dir * V_move_len * edge_dir * self.flip
 
         new_vert_co = other_vert.co + V_new_offset
 
@@ -287,13 +317,12 @@ class AE_OT_ALIGN(Operator):
             traceback.print_exc()
             self.remove_shaders(context)
 
-
     def draw_shaders_3d(self, context):
 
         # white
         para_edge_color = (.9, 1, .9, 1.0)
 
-        if self.new_vert_loc == self.mouse_loc:
+        if self.error:
             # redish
             para_edge_color = (.9, .1, .3, 1.0)
 
@@ -344,41 +373,37 @@ class AE_OT_ALIGN(Operator):
 
         gpu.state.point_size_set(1)
 
+        if not self.error:
 
-        # LINES
-        # possible guide edges along which edge will be moved to make it parallel
+            # LINES
+            # possible guide edges along which edge will be moved to make it parallel
 
-        world_coors = coors_loc_to_world(self.moving_lines, self.obj)
-
-
-        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
-
-        shader_moving_lines.bind()
-        shader_moving_lines.uniform_float("color", (.7, .7, 0, 1.0))
-        batch_moving_lines.draw(shader_moving_lines)
+            world_coors = coors_loc_to_world(self.moving_lines, self.obj)
 
 
-        # LINES
-        # active guide edge, along which edge will be moved to make it parallel
+            shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+            batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
-        gpu.state.line_width_set(2)
+            shader_moving_lines.bind()
+            shader_moving_lines.uniform_float("color", (.7, .7, 0, 1.0))
+            batch_moving_lines.draw(shader_moving_lines)
 
-        world_coors = coors_loc_to_world(self.guide_edge, self.obj)
 
-        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
+            # LINES
+            # active guide edge, along which edge will be moved to make it parallel
 
-        shader_moving_lines.bind()
-        shader_moving_lines.uniform_float("color", para_edge_color)
-        batch_moving_lines.draw(shader_moving_lines)
+            gpu.state.line_width_set(2)
 
-        gpu.state.line_width_set(1)
+            world_coors = coors_loc_to_world(self.guide_edge, self.obj)
 
-        
+            shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+            batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
-        # the return value when no intersection is found is the mouse location
-        if self.new_vert_loc != self.mouse_loc:
+            shader_moving_lines.bind()
+            shader_moving_lines.uniform_float("color", para_edge_color)
+            batch_moving_lines.draw(shader_moving_lines)
+
+            gpu.state.line_width_set(1)
 
             # LINES
             # where edge will be placed
@@ -410,8 +435,6 @@ class AE_OT_ALIGN(Operator):
             gpu.state.point_size_set(1)
 
 
-
-
     def safe_draw_shader_2d(self, context):
 
         try:
@@ -421,14 +444,29 @@ class AE_OT_ALIGN(Operator):
             traceback.print_exc()
             self.remove_shaders(context)
 
-
     def draw_shaders_2d(self, context):
 
-        Mode = ["(V) Mode: " + self.mode]
+        texts = ["(V) Mode: " + self.mode]
 
-        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=Mode, size=15)
+        if self.new_vert_loc is None:
+            texts.append("No Intersection found")
+
+        if self.mode == 'Absolute':
+            texts.append("(F) Flip Edge")
+
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
         textbox.draw()
 
+
+def vert_pair_other_vert(verts, vert):
+    """
+    returns other element in list from the one that is given
+    """
+
+    verts = verts.copy()
+    verts.remove(vert)
+
+    return verts[0]
 
 def coors_loc_to_world(coors, obj):
     world_coors = []
@@ -441,3 +479,5 @@ def coors_loc_to_world(coors, obj):
 def coor_loc_to_world(coor, obj):
     world_coor = obj.matrix_world @ coor
     return world_coor
+
+

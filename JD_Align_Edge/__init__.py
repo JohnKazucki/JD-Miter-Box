@@ -16,7 +16,7 @@ bl_info = {
     "author" : "João Desager",
     "description" : "Collection of Mesh Editing tools",
     "blender" : (3, 3, 2),
-    "version" : (0, 0, 2),
+    "version" : (0, 0, 3),
     "location" : "",
     "warning" : "",
     "category" : "Generic"
