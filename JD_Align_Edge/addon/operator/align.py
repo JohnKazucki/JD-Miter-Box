@@ -30,9 +30,9 @@ class AE_OT_ALIGN(Operator):
 
     def invoke(self, context, event):
 
-        obj=context.active_object
-        self.objdata = obj.data
-        self.bm=bmesh.from_edit_mesh(obj.data)
+        self.obj=context.active_object
+        self.objdata = self.obj.data
+        self.bm=bmesh.from_edit_mesh(self.obj.data)
 
         active_verts = []
 
@@ -61,7 +61,7 @@ class AE_OT_ALIGN(Operator):
         context.area.tag_redraw()
 
         # Free navigation
-        if event.type == 'MIDDLEMOUSE':
+        if event.type in ('MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'):
             return {'PASS_THROUGH'}
 
         # Cancel
@@ -76,7 +76,7 @@ class AE_OT_ALIGN(Operator):
             self.closest_active_vert = self.get_closest_active_vert(context)
             mov_vert_connected = self.get_moving_vert_connected_verts(self.closest_active_vert, self.edge_selected)
 
-            self.moving_lines = self.get_moving_edge_lines(self.closest_active_vert, mov_vert_connected, self.mouse_loc)
+            self.moving_lines = self.get_moving_edge_lines(self.closest_active_vert, mov_vert_connected)
 
             self.guide_edge, guide_vert = self.get_moving_edge_by_angle(context, self.closest_active_vert, mov_vert_connected, self.mouse_loc)
 
@@ -86,10 +86,16 @@ class AE_OT_ALIGN(Operator):
 
         # Confirm
         elif event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+
+            self.remove_shaders(context)
+
+            if self.new_vert_loc == self.mouse_loc:
+                self.report({'ERROR'}, "No valid intersection point found!")
+                return {'FINISHED'}
+
             self.closest_active_vert.co = self.new_vert_loc
             bmesh.update_edit_mesh(self.objdata)
 
-            self.remove_shaders(context)
             return {'FINISHED'}
 
         return {"RUNNING_MODAL"}
@@ -102,7 +108,7 @@ class AE_OT_ALIGN(Operator):
         active_edge_dist_to_cursor = []
 
         for vert in self.edge_selected:
-            coor = vert.co
+            coor = coor_loc_to_world(vert.co, self.obj)
             SS_vert = location_3d_to_region_2d(region, rv3d, coor, default=None)
 
             difference = Vector(self.mouse_loc) - SS_vert
@@ -124,21 +130,31 @@ class AE_OT_ALIGN(Operator):
 
         return mov_vert_connected
 
-    def get_moving_edge_lines(self, active_vert, moving_verts, mouse_loc):
-        return [active_vert.co, moving_verts[0].co, active_vert.co, moving_verts[1].co]
+    def get_moving_edge_lines(self, active_vert, moving_verts):
+        
+        moving_edges = []
+
+        for vert in moving_verts:
+            moving_edges += [active_vert.co, vert.co]
+
+        return moving_edges
+
+        # return [active_vert.co, moving_verts[0].co, active_vert.co, moving_verts[1].co]
 
     def get_moving_edge_by_angle(self, context, active_vert, moving_verts, SS_mouse_loc):
 
         region = context.region
         rv3d = bpy.context.space_data.region_3d
 
+        active_vert_co = coor_loc_to_world(active_vert.co, self.obj)
         SS_mouse_loc = Vector(SS_mouse_loc)
         
-        SS_active_vert = location_3d_to_region_2d(region, rv3d, active_vert.co, default=None)
+        SS_active_vert = location_3d_to_region_2d(region, rv3d, active_vert_co, default=None)
 
         SS_moving_verts = []
         for vert in moving_verts:
-            SS_mov_vert = location_3d_to_region_2d(region, rv3d, vert.co, default=None)
+            vert_co = coor_loc_to_world(vert.co, self.obj)
+            SS_mov_vert = location_3d_to_region_2d(region, rv3d, vert_co, default=None)
             SS_moving_verts.append(SS_mov_vert)
 
         V_to_mouse = SS_mouse_loc-SS_active_vert
@@ -194,6 +210,9 @@ class AE_OT_ALIGN(Operator):
             # print(intersections[0])
 
             return other_vert.co, intersections[0]
+        
+        else:
+            return other_vert.co, self.mouse_loc
 
             
 
@@ -217,32 +236,53 @@ class AE_OT_ALIGN(Operator):
 
     def draw_shaders_3d(self, context):
 
+        # white
+        para_edge_color = (.9, 1, .9, 1.0)
+
+        if self.new_vert_loc == self.mouse_loc:
+            # redish
+            para_edge_color = (.9, .1, .3, 1.0)
+
+        # LINES
+        # active edge, the guide edge
+
+        gpu.state.line_width_set(3)
+
         coors = [vert.co for vert in self.edge_active]
+        world_coors = coors_loc_to_world(coors, self.obj)
 
         shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch = batch_for_shader(shader, 'LINES', {"pos": coors})
+        batch = batch_for_shader(shader, 'LINES', {"pos": world_coors})
 
         shader.bind()
-        shader.uniform_float("color", (0, 1, 0, 1.0))
+        shader.uniform_float("color", para_edge_color)
         batch.draw(shader)
 
+        gpu.state.line_width_set(1)
+
+        # LINES
+        # selected edge, will be made parallel
 
         coors = [vert.co for vert in self.edge_selected]
+        world_coors = coors_loc_to_world(coors, self.obj)
 
         shader_active = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_active = batch_for_shader(shader_active, 'LINES', {"pos": coors})
+        batch_active = batch_for_shader(shader_active, 'LINES', {"pos": world_coors})
 
         shader_active.bind()
         shader_active.uniform_float("color", (1, 1, 0, 1.0))
         batch_active.draw(shader_active)
 
 
+        # POINT
         # point of selected edge that will be moved to make the edge parallel
 
         gpu.state.point_size_set(10)
 
+        world_coors = coor_loc_to_world(self.closest_active_vert.co, self.obj)
+
         shader_dots = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": [self.closest_active_vert.co]})
+        batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": [world_coors]})
 
         shader_dots.bind()
         shader_dots.uniform_float("color", (1, 1, 0, 1.0))
@@ -251,43 +291,81 @@ class AE_OT_ALIGN(Operator):
         gpu.state.point_size_set(1)
 
 
+        # LINES
         # possible guide edges along which edge will be moved to make it parallel
 
+        world_coors = coors_loc_to_world(self.moving_lines, self.obj)
+
+
         shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": self.moving_lines})
+        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
         shader_moving_lines.bind()
         shader_moving_lines.uniform_float("color", (.7, .7, 0, 1.0))
         batch_moving_lines.draw(shader_moving_lines)
 
 
+        # LINES
         # active guide edge, along which edge will be moved to make it parallel
 
-        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": self.guide_edge})
+        gpu.state.line_width_set(2)
 
-        shader_moving_lines.bind()
-        shader_moving_lines.uniform_float("color", (1, .7, .7, 1.0))
-        batch_moving_lines.draw(shader_moving_lines)
-
+        world_coors = coors_loc_to_world(self.guide_edge, self.obj)
 
         shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": self.new_edge})
+        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
         shader_moving_lines.bind()
-        shader_moving_lines.uniform_float("color", (1, 1, 1, 1.0))
+        shader_moving_lines.uniform_float("color", para_edge_color)
         batch_moving_lines.draw(shader_moving_lines)
 
+        gpu.state.line_width_set(1)
 
-        # where the point of the selected edge will be moved to upon confirm
+        
 
-        gpu.state.point_size_set(10)
+        # the return value when no intersection is found is the mouse location
+        if self.new_vert_loc != self.mouse_loc:
 
-        shader_dots = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": [self.new_vert_loc]})
+            # LINES
+            # where edge will be placed
 
-        shader_dots.bind()
-        shader_dots.uniform_float("color", (1, 1, 1, 1.0))
-        batch_dots.draw(shader_dots)
+            world_coors = coors_loc_to_world(self.new_edge, self.obj)
 
-        gpu.state.point_size_set(1)
+            shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+            batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
+
+            shader_moving_lines.bind()
+            shader_moving_lines.uniform_float("color", (1, 1, 1, 1.0))
+            batch_moving_lines.draw(shader_moving_lines)
+
+
+            # POINT
+            # where the point of the selected edge will be moved to upon confirm
+
+            world_coors = coor_loc_to_world(self.new_vert_loc, self.obj)
+
+            gpu.state.point_size_set(10)
+
+            shader_dots = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+            batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": [world_coors]})
+
+            shader_dots.bind()
+            shader_dots.uniform_float("color", (1, 1, 1, 1.0))
+            batch_dots.draw(shader_dots)
+
+            gpu.state.point_size_set(1)
+
+
+
+
+def coors_loc_to_world(coors, obj):
+    world_coors = []
+
+    for coor in coors:
+        world_coors.append(coor_loc_to_world(coor, obj))
+
+    return world_coors
+
+def coor_loc_to_world(coor, obj):
+    world_coor = obj.matrix_world @ coor
+    return world_coor

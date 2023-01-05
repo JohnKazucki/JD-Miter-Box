@@ -5,7 +5,7 @@ from bpy.types import Panel
 from .classes import AE_PT_VIEW_3D
 
 class AE_PT_ALIGN(AE_PT_VIEW_3D, Panel):
-    bl_label = "Align"
+    bl_label = "JD Align"
 
     def draw(self, context):
         scene = context.scene

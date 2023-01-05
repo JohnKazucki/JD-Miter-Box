@@ -14,9 +14,9 @@
 bl_info = {
     "name" : "JD Align Edge",
     "author" : "João Desager",
-    "description" : "",
+    "description" : "Collection of Mesh Editing tools",
     "blender" : (3, 3, 2),
-    "version" : (0, 0, 1),
+    "version" : (0, 0, 2),
     "location" : "",
     "warning" : "",
     "category" : "Generic"
