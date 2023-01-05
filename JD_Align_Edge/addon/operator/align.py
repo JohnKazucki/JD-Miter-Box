@@ -1,4 +1,3 @@
-from distutils.log import debug
 import bpy
 import bmesh
 
@@ -12,10 +11,10 @@ from mathutils import Vector
 from mathutils.geometry import intersect_line_line
 
 from bpy.types import Operator
-from bpy.props import IntProperty, BoolProperty
+
+from ..utility.draw.core import JDraw_Text_Box_Multi
 
 
-from ..utility.math import clamp
 
 class AE_OT_ALIGN(Operator):
     bl_idname = "object.ae_align"
@@ -61,7 +60,11 @@ class AE_OT_ALIGN(Operator):
         self.edge_selected = selected_verts
         self.edge_active = active_verts
 
+        self.mode = 'Slide'
+
         self.draw_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_3d, (context,), 'WINDOW', 'POST_VIEW')
+        self.draw_UI_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_2d, (context, ), 'WINDOW', 'POST_PIXEL')
+            
         context.window_manager.modal_handler_add(self)
 
         return {"RUNNING_MODAL"}
@@ -78,20 +81,18 @@ class AE_OT_ALIGN(Operator):
             self.remove_shaders(context)
             return {'CANCELLED'}
 
+        # toggle between edge slide and absolute
+        elif event.type == 'S' and event.value == 'PRESS':
+            if self.mode == 'Slide':
+                self.mode = 'Absolute'
+            else:
+                self.mode = 'Slide'
+
+            self.update(event, context)
+
         # Adjust
         elif event.type == 'MOUSEMOVE':
-            self.mouse_loc = (event.mouse_region_x, event.mouse_region_y)
-
-            self.closest_active_vert = self.get_closest_active_vert(context)
-            mov_vert_connected = self.get_moving_vert_connected_verts(self.closest_active_vert, self.edge_selected)
-
-            self.moving_lines = self.get_moving_edge_lines(self.closest_active_vert, mov_vert_connected)
-
-            self.guide_edge, guide_vert = self.get_moving_edge_by_angle(context, self.closest_active_vert, mov_vert_connected, self.mouse_loc)
-
-            other_vert_loc, self.new_vert_loc = self.find_intersection_point(self.closest_active_vert, guide_vert, self.edge_selected, self.edge_active)
-
-            self.new_edge = [other_vert_loc, self.new_vert_loc, self.closest_active_vert.co, self.new_vert_loc]
+            self.update(event, context)
 
         # Confirm
         elif event.type == 'LEFTMOUSE' and event.value == 'PRESS':
@@ -108,6 +109,25 @@ class AE_OT_ALIGN(Operator):
             return {'FINISHED'}
 
         return {"RUNNING_MODAL"}
+
+
+    def update(self, event, context):
+        self.mouse_loc = (event.mouse_region_x, event.mouse_region_y)
+
+        self.closest_active_vert = self.get_closest_active_vert(context)
+        mov_vert_connected = self.get_moving_vert_connected_verts(self.closest_active_vert, self.edge_selected)
+
+        self.moving_lines = self.get_moving_edge_lines(self.closest_active_vert, mov_vert_connected)
+
+        self.guide_edge, guide_vert = self.get_moving_edge_by_angle(context, self.closest_active_vert, mov_vert_connected, self.mouse_loc)
+
+        other_vert_loc, self.new_vert_loc = self.find_intersection_point(self.closest_active_vert, guide_vert, self.edge_selected, self.edge_active)
+
+        if self.mode == 'Absolute':
+            self.new_vert_loc = self.get_absolute_endpoint(self.closest_active_vert, self.edge_selected, self.edge_active)
+            
+
+        self.new_edge = [other_vert_loc, self.new_vert_loc, self.closest_active_vert.co, self.new_vert_loc]
         
 
     def get_closest_active_vert(self, context):
@@ -148,8 +168,6 @@ class AE_OT_ALIGN(Operator):
 
         return moving_edges
 
-        # return [active_vert.co, moving_verts[0].co, active_vert.co, moving_verts[1].co]
-
     def get_moving_edge_by_angle(self, context, active_vert, moving_verts, SS_mouse_loc):
 
         region = context.region
@@ -189,7 +207,6 @@ class AE_OT_ALIGN(Operator):
 
         return guide_edge, closest_vert
 
-
     def find_intersection_point(self, moving_vert, guide_vert, selected_verts, active_verts):
 
         selected_verts = selected_verts.copy()
@@ -223,6 +240,30 @@ class AE_OT_ALIGN(Operator):
         else:
             return other_vert.co, self.mouse_loc
 
+
+    def get_absolute_endpoint(self, moving_vert, selected_verts, active_verts):
+
+        from ..utility.math import sign
+
+        selected_verts = selected_verts.copy()
+        selected_verts.remove(moving_vert)
+        other_vert = selected_verts[0]
+        
+        V_guide_dir = active_verts[0].co - active_verts[1].co
+        V_guide_dir.normalize()
+
+        V_move_orig = moving_vert.co - other_vert.co
+        V_move_len = V_move_orig.length
+
+        V_move_orig.normalize()
+
+        flip_dir = sign(V_guide_dir.dot(V_move_orig))
+
+        V_new_offset = V_guide_dir * V_move_len * flip_dir
+
+        new_vert_co = other_vert.co + V_new_offset
+
+        return new_vert_co
             
 
     def remove_shaders(self, context):
@@ -230,6 +271,10 @@ class AE_OT_ALIGN(Operator):
 
         if self.draw_handle != None:
             self.draw_handle = bpy.types.SpaceView3D.draw_handler_remove(self.draw_handle, "WINDOW")
+            context.area.tag_redraw()
+
+        if self.draw_UI_handle != None:
+            self.draw_UI_handle = bpy.types.SpaceView3D.draw_handler_remove(self.draw_UI_handle, "WINDOW")
             context.area.tag_redraw()
 
 
@@ -365,6 +410,24 @@ class AE_OT_ALIGN(Operator):
             gpu.state.point_size_set(1)
 
 
+
+
+    def safe_draw_shader_2d(self, context):
+
+        try:
+            self.draw_shaders_2d(context)
+        except Exception:
+            print("2D Shader Failed in JD Align Edge")
+            traceback.print_exc()
+            self.remove_shaders(context)
+
+
+    def draw_shaders_2d(self, context):
+
+        Mode = ["Mode: " + self.mode]
+
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0], y=self.mouse_loc[1], strings=Mode, size=15)
+        textbox.draw()
 
 
 def coors_loc_to_world(coors, obj):
