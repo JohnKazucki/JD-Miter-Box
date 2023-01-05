@@ -1,18 +1,20 @@
 import bpy
 import bmesh
 
+from bpy.types import Operator
+
+import traceback
+
 import gpu
 from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 
-import traceback
+from ..utility.draw.core import JDraw_Text_Box_Multi
 
 from mathutils import Vector
 from mathutils.geometry import intersect_line_line
 
-from bpy.types import Operator
-
-from ..utility.draw.core import JDraw_Text_Box_Multi
+from ..utility.mesh import vert_pair_other_vert, coor_loc_to_world, coors_loc_to_world
 
 
 
@@ -456,28 +458,3 @@ class AE_OT_ALIGN(Operator):
 
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
         textbox.draw()
-
-
-def vert_pair_other_vert(verts, vert):
-    """
-    returns other element in list from the one that is given
-    """
-
-    verts = verts.copy()
-    verts.remove(vert)
-
-    return verts[0]
-
-def coors_loc_to_world(coors, obj):
-    world_coors = []
-
-    for coor in coors:
-        world_coors.append(coor_loc_to_world(coor, obj))
-
-    return world_coors
-
-def coor_loc_to_world(coor, obj):
-    world_coor = obj.matrix_world @ coor
-    return world_coor
-
-
