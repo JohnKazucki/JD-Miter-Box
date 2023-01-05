@@ -13,4 +13,4 @@ class AE_PT_ALIGN(AE_PT_VIEW_3D, Panel):
         layout = self.layout
 
         row = layout.row()
-        row.operator("object.ae_align")
+        row.operator("object.ae_align", icon='SNAP_EDGE')

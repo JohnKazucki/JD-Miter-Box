@@ -82,7 +82,7 @@ class AE_OT_ALIGN(Operator):
             return {'CANCELLED'}
 
         # toggle between edge slide and absolute
-        elif event.type == 'S' and event.value == 'PRESS':
+        elif event.type == 'V' and event.value == 'PRESS':
             if self.mode == 'Slide':
                 self.mode = 'Absolute'
             else:
@@ -424,9 +424,9 @@ class AE_OT_ALIGN(Operator):
 
     def draw_shaders_2d(self, context):
 
-        Mode = ["Mode: " + self.mode]
+        Mode = ["(V) Mode: " + self.mode]
 
-        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0], y=self.mouse_loc[1], strings=Mode, size=15)
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=Mode, size=15)
         textbox.draw()
 
 
