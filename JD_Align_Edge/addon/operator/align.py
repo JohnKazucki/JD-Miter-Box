@@ -65,6 +65,8 @@ class AE_OT_ALIGN(Operator):
         self.mode = 'Slide'
         self.flip = 1
 
+        self.new_vert_loc = None
+
         self.draw_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_3d, (context,), 'WINDOW', 'POST_VIEW')
         self.draw_UI_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_2d, (context, ), 'WINDOW', 'POST_PIXEL')
             
@@ -73,7 +75,6 @@ class AE_OT_ALIGN(Operator):
         return {"RUNNING_MODAL"}
 
     def modal(self, context, event):
-        context.area.tag_redraw()
 
         # Free navigation
         if event.type in ('MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'):
@@ -115,6 +116,8 @@ class AE_OT_ALIGN(Operator):
             bmesh.update_edit_mesh(self.objdata)
 
             return {'FINISHED'}
+
+        context.area.tag_redraw()
 
         return {"RUNNING_MODAL"}
 
@@ -375,7 +378,7 @@ class AE_OT_ALIGN(Operator):
 
         gpu.state.point_size_set(1)
 
-        if not self.error:
+        if not self.error and self.mode == 'Slide':
 
             # LINES
             # possible guide edges along which edge will be moved to make it parallel
@@ -406,6 +409,9 @@ class AE_OT_ALIGN(Operator):
             batch_moving_lines.draw(shader_moving_lines)
 
             gpu.state.line_width_set(1)
+
+
+        if not self.error:
 
             # LINES
             # where edge will be placed
