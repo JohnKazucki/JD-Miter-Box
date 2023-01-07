@@ -67,6 +67,8 @@ class AE_OT_ALIGN(Operator):
 
         self.new_vert_loc = None
 
+        self.update(event, context)
+
         self.draw_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_3d, (context,), 'WINDOW', 'POST_VIEW')
         self.draw_UI_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_2d, (context, ), 'WINDOW', 'POST_PIXEL')
             
