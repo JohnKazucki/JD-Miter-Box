@@ -82,6 +82,9 @@ class AE_OT_ALIGN(Operator):
 
         # Cancel
         elif event.type == 'RIGHTMOUSE' and event.value == 'PRESS':
+            # not needed I think, but doesn't hurt to free the bmesh even if we didn't edit it
+            bmesh.update_edit_mesh(self.objdata)
+
             self.remove_shaders(context)
             return {'CANCELLED'}
 
@@ -110,6 +113,8 @@ class AE_OT_ALIGN(Operator):
 
             if self.error:
                 self.report({'ERROR'}, "No valid intersection point found!")
+                # not needed I think, but doesn't hurt to free the bmesh even if we didn't edit it
+                bmesh.update_edit_mesh(self.objdata)
                 return {'FINISHED'}
 
             self.closest_active_vert.co = self.new_vert_loc
