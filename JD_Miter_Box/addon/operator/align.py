@@ -18,8 +18,8 @@ from ..utility.mesh import vert_pair_other_vert, coor_loc_to_world, coors_loc_to
 
 
 
-class AE_OT_ALIGN(Operator):
-    bl_idname = "object.ae_align"
+class MB_OT_ALIGN(Operator):
+    bl_idname = "object.mb_align"
     bl_label = "Align Edge"
     bl_description = "Aligns Selected Edge to Active Edge by sliding it along one of the connected edges"
     bl_options = {'REGISTER','UNDO'}

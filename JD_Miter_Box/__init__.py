@@ -12,11 +12,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 bl_info = {
-    "name" : "JD Align Edge",
+    "name" : "Miter Box",
     "author" : "João Desager",
     "description" : "Collection of Mesh Editing tools",
     "blender" : (3, 3, 2),
-    "version" : (0, 0, 3),
+    "version" : (0, 0, 4),
     "location" : "",
     "warning" : "",
     "category" : "Generic"
