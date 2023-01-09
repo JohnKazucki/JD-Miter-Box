@@ -17,7 +17,7 @@ bl_info = {
     "description" : "Collection of Mesh Editing tools",
     "blender" : (3, 3, 2),
     "version" : (0, 0, 4),
-    "location" : "",
+    "location" : "Edit Mode -> Context Menu, N Panel > MB",
     "warning" : "",
     "category" : "Generic"
 }
