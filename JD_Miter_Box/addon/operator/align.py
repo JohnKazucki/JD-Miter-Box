@@ -23,8 +23,13 @@ Align_kb_general = {'mode' :
 }
 
 class Modes(Enum):
-    Slide = 1
-    Absolute = 2
+    Slide = 0
+    Absolute = 1
+
+class Absolute_Length_Modes(Enum):
+    Original = 0
+    Match = 1
+    Project = 2
 
 # Mode specific keybinds
 
@@ -34,8 +39,8 @@ Align_kb_mode = {
     Modes.Absolute.name : {
         'Flip_Edge':
         {'key':'F', 'desc':"Flip Edge", 'var':'flip'},
-        # 'Length_Mode':
-        # {'key':'G', 'desc':"Length Mode"}
+        'Length_Mode':
+        {'key':'G', 'desc':"Length", 'var':'abs_length_mode'}
     },
 }
 
@@ -100,8 +105,13 @@ class MB_OT_ALIGN(Operator):
 
         self.mode = 'Slide'
         self.flip = 1
+        self.abs_length_mode = Absolute_Length_Modes(0).name
 
         self.new_vert_loc = None
+
+        # input management variables
+        self.index = 0
+        
 
     def modal(self, context, event):
 
@@ -135,9 +145,17 @@ class MB_OT_ALIGN(Operator):
 
             # flip edge direction
             if event.type == mode_kb['Flip_Edge']['key'] and event.value == 'PRESS':
-                if self.mode == 'Absolute':
-                    self.flip *= -1
-                    self.update(event, context)
+                self.flip *= -1
+                self.update(event, context)
+
+            # cycle length mode
+            
+            if event.type == mode_kb['Length_Mode']['key'] and event.value == 'PRESS':
+                self.index += 1
+                self.index %= len(Absolute_Length_Modes)
+                self.abs_length_mode = Absolute_Length_Modes(self.index).name
+                self.update(event, context)
+
 
         # Adjust
         if event.type == 'MOUSEMOVE':
@@ -325,14 +343,24 @@ class MB_OT_ALIGN(Operator):
         other_vert = selected_verts[0]
         
         V_guide_dir = active_verts[0].co - active_verts[1].co
+        V_guide_dir_length = V_guide_dir.length
         V_guide_dir.normalize()
 
         V_move_orig = moving_vert.co - other_vert.co
-        V_move_len = V_move_orig.length
+
+        len_modes_math = {
+            Absolute_Length_Modes.Original.name: V_move_orig.length,
+            Absolute_Length_Modes.Match.name: V_guide_dir_length,
+            Absolute_Length_Modes.Project.name: V_guide_dir.dot(V_move_orig)
+        }
+
+        V_move_len = len_modes_math[self.abs_length_mode]
 
         V_move_orig.normalize()
 
-        edge_dir = sign(V_guide_dir.dot(V_move_orig))
+        edge_dir = None
+        if self.abs_length_mode != Absolute_Length_Modes.Project.name:
+            edge_dir = sign(V_guide_dir.dot(V_move_orig))
         if not edge_dir:
             edge_dir = 1
 
