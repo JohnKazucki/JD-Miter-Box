@@ -3,11 +3,12 @@ import bmesh
 
 from bpy.types import Operator
 
-import traceback
-
 import gpu
 from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import location_3d_to_region_2d
+
+import traceback
+from enum import Enum
 
 from ..utility.draw.core import JDraw_Text_Box_Multi
 
@@ -16,6 +17,27 @@ from mathutils.geometry import intersect_line_line
 
 from ..utility.mesh import vert_pair_other_vert, coor_loc_to_world, coors_loc_to_world
 
+
+Align_kb_general = {'mode' :
+    {'key':'V', 'desc':"Mode", 'var':'mode'},
+}
+
+class Modes(Enum):
+    Slide = 1
+    Absolute = 2
+
+# Mode specific keybinds
+
+Align_kb_mode = {
+    Modes.Slide.name : {
+    },
+    Modes.Absolute.name : {
+        'Flip_Edge':
+        {'key':'F', 'desc':"Flip Edge", 'var':'flip'},
+        # 'Length_Mode':
+        # {'key':'G', 'desc':"Length Mode"}
+    },
+}
 
 
 class MB_OT_ALIGN(Operator):
@@ -44,28 +66,24 @@ class MB_OT_ALIGN(Operator):
             self.report({'ERROR'}, "Only works with 2 edges selected")
             return {'CANCELLED'}
 
-        active_verts = []
+        self.active_verts = []
 
         for index, v in enumerate(self.bm.select_history.active.verts):
-            active_verts.append(v)
+            self.active_verts.append(v)
 
-        selected_verts = []
+        self.selected_verts = []
 
         for v in self.bm.verts:
-            if v.select and v not in active_verts:
-                selected_verts.append(v)
+            if v.select and v not in self.active_verts:
+                self.selected_verts.append(v)
 
-        if len(selected_verts) != 2:
+        if len(self.selected_verts) != 2:
             self.report({'ERROR'}, "Edges can not share a vertex")
             return {'CANCELLED'}
 
-        self.edge_selected = selected_verts
-        self.edge_active = active_verts
 
-        self.mode = 'Slide'
-        self.flip = 1
-
-        self.new_vert_loc = None
+        # set up variables
+        self.setup()
 
         self.update(event, context)
 
@@ -76,6 +94,15 @@ class MB_OT_ALIGN(Operator):
 
         return {"RUNNING_MODAL"}
 
+    def setup(self):
+        self.edge_selected = self.selected_verts
+        self.edge_active = self.active_verts
+
+        self.mode = 'Slide'
+        self.flip = 1
+
+        self.new_vert_loc = None
+
     def modal(self, context, event):
 
         # Free navigation
@@ -83,33 +110,41 @@ class MB_OT_ALIGN(Operator):
             return {'PASS_THROUGH'}
 
         # Cancel
-        elif event.type == 'RIGHTMOUSE' and event.value == 'PRESS':
+        if event.type == 'RIGHTMOUSE' and event.value == 'PRESS':
             # not needed I think, but doesn't hurt to free the bmesh even if we didn't edit it
             bmesh.update_edit_mesh(self.objdata)
 
             self.remove_shaders(context)
             return {'CANCELLED'}
 
-        # toggle between edge slide and absolute
-        elif event.type == 'V' and event.value == 'PRESS':
-            if self.mode == 'Slide':
-                self.mode = 'Absolute'
+
+
+        # MDOE toggle between edge slide and absolute
+        if event.type == Align_kb_general['mode']['key'] and event.value == 'PRESS':
+            if self.mode == Modes.Slide.name:
+                self.mode = Modes.Absolute.name
             else:
-                self.mode = 'Slide'
+                self.mode = Modes.Slide.name
 
             self.update(event, context)
 
-        elif event.type == 'F' and event.value == 'PRESS':
-            if self.mode == 'Absolute':
-                self.flip *= -1
-                self.update(event, context)
+        # MDOE - ABSOLUTE
+        if self.mode == Modes.Absolute.name:
+
+            mode_kb = Align_kb_mode[self.mode]
+
+            # flip edge direction
+            if event.type == mode_kb['Flip_Edge']['key'] and event.value == 'PRESS':
+                if self.mode == 'Absolute':
+                    self.flip *= -1
+                    self.update(event, context)
 
         # Adjust
-        elif event.type == 'MOUSEMOVE':
+        if event.type == 'MOUSEMOVE':
             self.update(event, context)
 
         # Confirm
-        elif event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
 
             self.remove_shaders(context)
 
@@ -461,13 +496,26 @@ class MB_OT_ALIGN(Operator):
 
     def draw_shaders_2d(self, context):
 
-        texts = ["(V) Mode: " + self.mode]
+        texts = []
+
+        kb_string = "({key}) {desc}"
+        kb_status = ": {var}"
+
+        # general
+        for _, keys in Align_kb_general.items():
+            if keys.get('var'):
+                status = kb_status.format(var=getattr(self, keys['var']))
+            texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
 
         if self.new_vert_loc is None:
             texts.append("No Intersection found")
 
-        if self.mode == 'Absolute':
-            texts.append("(F) Flip Edge")
+        # mode
+        for _, keys in Align_kb_mode[self.mode].items():
+            status = ""
+            if keys.get('var'):
+                status = kb_status.format(var=getattr(self, keys['var']))
+            texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
 
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
         textbox.draw()
