@@ -16,6 +16,8 @@ class MB_PT_ALIGN(MB_PT_VIEW_3D, Panel):
 
         row = layout.row()
         row.operator("object.mb_align", icon='SNAP_EDGE')
+        row = layout.row()
+        row.operator("object.mb_align_face", icon='AXIS_SIDE')
 
 
 
@@ -27,6 +29,9 @@ class VIEW3D_MB_MT_edit_mesh_MiterBox(Menu):
         layout = self.layout
 
         layout.operator("object.mb_align", icon='SNAP_EDGE')
+
+        layout.operator("object.mb_align_face", icon='AXIS_SIDE')
+
 
 
 # draw function for integration in menus, based on LoopTools
