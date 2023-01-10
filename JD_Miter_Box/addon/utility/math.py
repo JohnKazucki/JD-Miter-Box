@@ -1,5 +1,5 @@
 
-from mathutils import Vector
+from mathutils import Vector, Quaternion
 
 import math
 
@@ -35,3 +35,15 @@ def distance_point_to_edge_2d(point, p0, p1):
     dist_to_line = dist_to_line.length
 
     return dist_to_line
+
+
+def rotate_point_around_axis(axis, point, angledeg):
+
+    if axis.length != 1.0:
+        axis = axis.normalized()
+
+    rot_quat = Quaternion(axis, math.radians(angledeg))
+
+    new_point = rot_quat @ point
+
+    return new_point
