@@ -12,6 +12,7 @@ from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 
 from mathutils import Vector, Matrix
+from mathutils.geometry import intersect_line_plane
 
 from ..utility.draw.core import JDraw_Text_Box_Multi
 
@@ -98,6 +99,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.input_index = InputModes.Axis.value
         
         # TODO : add a mode or autodetect whether to use the active face normal, or the average normal of all selected faces
+        self.active_face = self.bm.faces.active
         self.normal = self.active_face.normal       
 
         
@@ -198,10 +200,16 @@ class MB_OT_ALIGN_FACE(Operator):
         self.rot_axis = self.rot_edge[0].co - self.rot_edge[1].co
         self.fix_rot_dir()
 
-        self.new_point_coors = self.rotate_verts(self.moving_verts, self.angle)
-        self.new_edge_coors = self.rotate_verts(self.edge_verts, self.angle)
+        if self.mode == Modes.Rotate.name:
+            self.new_point_coors = self.rotate_verts(self.moving_verts, self.angle)
+            self.new_edge_coors = self.rotate_verts(self.edge_verts, self.angle)
+
+        if self.mode == Modes.Project.name:
+            self.new_point_coors = self.project_verts(self.moving_verts, self.angle, self.normal)
+            self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal)
 
 
+    # TODO : this should really not be run during update
     def fix_rot_dir(self):
         orig_coor = self.moving_verts[0]
         new_coor = self.rotate_verts([orig_coor], 10)[0]
@@ -209,7 +217,7 @@ class MB_OT_ALIGN_FACE(Operator):
         v_diff = new_coor - orig_coor.co
 
         if v_diff.dot(self.normal) < 0:
-            print("reversing")
+            # print("reversing")
             self.rot_axis *= -1
 
 
@@ -224,30 +232,35 @@ class MB_OT_ALIGN_FACE(Operator):
 
             new_coor = rotate_point_around_axis(self.rot_axis, old_coor, angle)
 
-            if self.mode == Modes.Project.name:
-                new_coor = self.rotation_length_compensation(new_coor)
-
             new_coor += self.rot_edge[0].co
 
             new_point_coors.append(new_coor)
 
         return new_point_coors
 
+    def project_verts(self, verts, angle, direction):
 
-    def rotation_length_compensation(self, new_coor):
-        perp_0 = new_coor.cross(self.rot_axis)
-        perp_to_axis = perp_0.cross(self.rot_axis)
-        perp_to_axis = perp_to_axis.normalized()
+        new_point_coors = []
+        old_point_coors = [vert.co for vert in verts]
 
-        scaling_factor = 1/math.cos(math.radians(self.angle))
+        for vert in old_point_coors:
 
-        if perp_to_axis.length != 0:
+            # get offset from ideal plane that goes through rotation axis (prior to rotation)
+            plane_point = self.rot_edge[0].co
+            rel_coor = vert - plane_point
+            offset = rel_coor.dot(direction)
 
-            scaling_mat = Matrix.Scale(scaling_factor, 4, perp_to_axis)
+            v_offset = direction * offset
 
-            new_coor = new_coor @ scaling_mat
+            plane_normal = rotate_point_around_axis(self.rot_axis, direction, angle)
+      
+            new_coor = intersect_line_plane(vert, vert+direction, plane_point, plane_normal)
 
-        return new_coor
+            new_coor += v_offset
+
+            new_point_coors.append(new_coor)
+
+        return new_point_coors
 
 
     def remove_shaders(self, context):
