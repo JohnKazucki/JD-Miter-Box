@@ -96,6 +96,11 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.inputmode = InputModes.Axis.name
         self.input_index = InputModes.Axis.value
+        
+        # TODO : winding order approach will still break for more complex face selections
+        # instead create own ordering of vertices, based on the perimeter of selection!
+        self.active_face = self.bm.faces.active
+        self.winding_verts = []
 
         
 
@@ -184,10 +189,26 @@ class MB_OT_ALIGN_FACE(Operator):
                 closest_edge = edge
 
         self.rot_edge = [v for v in closest_edge.verts]
+        self.find_rot_dir()
         # remove the vertices belonging to the rotation axis edge from the selected vertices
         self.moving_verts = [x for x in self.selected_verts if x not in self.rot_edge]
 
         self.update()  
+
+    def find_rot_dir(self):
+        # TODO : winding order approach will still break for more complex face selections
+        # instead create own ordering of vertices, based on the perimeter of selection!
+
+        for loop in self.active_face.loops:
+            self.winding_verts.append(loop.vert)
+
+        # find second vert of rot_edge in winding verts
+        # if previous vert is not rot_edge[0], then flip the order of rot_edge verts
+
+        second_idx = self.winding_verts.index(self.rot_edge[1])
+
+        if self.winding_verts[second_idx-1] is self.rot_edge[0]:
+            self.rot_edge.reverse()
 
 
     def update(self):
