@@ -19,13 +19,20 @@ from ..utility.math import distance_point_to_edge_2d, rotate_point_around_axis
 
 from ..utility.mesh import coors_loc_to_world
 
-Align_Face_kb_general = {'mode' :
-    {'key':'V', 'desc':"Mode", 'var':'mode'},
+Align_Face_kb_general = {
+                        'mode' :
+                            {'key':'V', 'desc':"Mode", 'var':'mode'},
+                        'input' :
+                            {'key':'R', 'desc':"Adjusting", 'var':'inputmode'},
 }
 
 class Modes(Enum):
     Rotate = 0
     Project = 1
+
+class InputModes(Enum):
+    Axis = 0
+    Angle = 1
 
 class MB_OT_ALIGN_FACE(Operator):
     bl_idname = "object.mb_align_face"
@@ -47,7 +54,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # set up variables
         self.setup(event)
-        self.update(event, context)
+        self.update()
 
         self.draw_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_3d, (context,), 'WINDOW', 'POST_VIEW')
         self.draw_UI_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_2d, (context, ), 'WINDOW', 'POST_PIXEL')
@@ -59,32 +66,37 @@ class MB_OT_ALIGN_FACE(Operator):
     def setup(self, event):
 
         self.edge_verts = []
+        self.edges = []
 
         for e in self.bm.edges:
             if e.select:
                 self.edge_verts += e.verts
+                self.edges.append(e)
 
-        self.active_verts = []
-
-        for index, v in enumerate(self.bm.select_history.active.verts):
-            self.active_verts.append(v)
+        self.rot_edge = [v for v in self.edges[0].verts]
 
         self.selected_verts = []
 
         for v in self.bm.verts:
-            if v.select and v not in self.active_verts:
+            if v.select:
                 self.selected_verts.append(v)
 
-        self.mouse_loc_start = (event.mouse_region_x, event.mouse_region_y)
+        # remove the vertices belonging to the rotation axis edge from the selected vertices
+        self.moving_verts = [x for x in self.selected_verts if x not in self.rot_edge]
 
-        self.offset = self.active_verts[0].co
+        self.mouse_loc_prev = Vector((event.mouse_region_x, event.mouse_region_y))
+
+        self.offset = self.rot_edge[0].co
 
         self.angle = 0
-        self.mode = Modes.Rotate.name
-
+        
         # input management variables
-        self.index = 0
-            
+        self.mode = Modes.Rotate.name
+        self.mode_index = Modes.Rotate.value
+
+        self.inputmode = InputModes.Axis.name
+        self.input_index = InputModes.Axis.value
+
         
 
     def modal(self, context, event):
@@ -103,28 +115,39 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # Adjust
         if event.type == 'MOUSEMOVE':
-            self.mouse_loc = (event.mouse_region_x, event.mouse_region_y)
+            self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
 
-            dist_from_start = Vector(self.mouse_loc)-Vector(self.mouse_loc_start)
-            dist_from_start = dist_from_start[0]
+            if self.inputmode == InputModes.Axis.name:
+                self.update_input(context)
 
-            self.angle = dist_from_start/3
+            if self.inputmode == InputModes.Angle.name:
 
-            self.update(event, context)
+                dist = event.mouse_x - event.mouse_prev_x
+
+                self.angle += dist/5
+
+                self.update()
 
         # Cycle modes
         if event.type == Align_Face_kb_general['mode']['key'] and event.value == 'PRESS':
-            self.index += 1
-            self.index %= len(Modes)
-            self.mode = Modes(self.index).name
-            self.update(event, context)
+            self.mode_index += 1
+            self.mode_index %= len(Modes)
+            self.mode = Modes(self.mode_index).name
+            self.update()
+
+        # Cycle Input modes
+        if event.type == Align_Face_kb_general['input']['key'] and event.value == 'PRESS':
+            self.input_index += 1
+            self.input_index %= len(InputModes)
+            self.inputmode = InputModes(self.input_index).name
+            self.update_input(context)   
 
         # Confirm
         if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
 
             self.remove_shaders(context)
 
-            for index, vert in enumerate(self.selected_verts):
+            for index, vert in enumerate(self.moving_verts):
                 vert.co = self.new_point_coors[index]
             
             bmesh.update_edit_mesh(self.objdata)
@@ -136,50 +159,43 @@ class MB_OT_ALIGN_FACE(Operator):
         return {"RUNNING_MODAL"}
 
 
-    def update(self, event, context):
-
-        self.rot_axis = self.active_verts[0].co - self.active_verts[1].co    
-
-        self.new_point_coors = self.rotate_verts(self.selected_verts)
-        self.new_edge_coors = self.rotate_verts(self.edge_verts)
-
-        # oldpoint_pos = self.selected_verts[0].co.copy()
-        # oldpoint_pos -= self.offset
-
-        # self.rot_axis = self.active_verts[0].co - self.active_verts[1].co        
-        # self.new_point_co = rotate_point_around_axis(self.rot_axis, oldpoint_pos, self.angle)
-
-        # self.new_point_co += self.offset
-
-
-
-        # self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
-
-
-        # region = context.region
-        # rv3d = bpy.context.space_data.region_3d
+    def update_input(self, context):
+        region = context.region
+        rv3d = bpy.context.space_data.region_3d
         
-        # closest_edge = None
-        # min_distance = None
+        closest_edge = None
+        min_distance = None
 
-        # for index, edge in enumerate(self.edges):
-        #     verts = [v.co for v in edge.verts]
-        #     coors = coors_loc_to_world(verts, self.obj)
-        #     SS_verts = []
-        #     for coor in coors:
-        #         SS_verts.append(location_3d_to_region_2d(region, rv3d, coor, default=None))
+        for index, edge in enumerate(self.edges):
+            verts = [v.co for v in edge.verts]
+            coors = coors_loc_to_world(verts, self.obj)
+            SS_verts = []
+            for coor in coors:
+                SS_verts.append(location_3d_to_region_2d(region, rv3d, coor, default=None))
 
-        #     if index == 0:
-        #         closest_edge = edge
-        #         min_distance = distance_point_to_edge_2d(self.mouse_loc, SS_verts[0], SS_verts[1])
+            if index == 0:
+                closest_edge = edge
+                min_distance = distance_point_to_edge_2d(self.mouse_loc, SS_verts[0], SS_verts[1])
 
-        #     curr_dist = distance_point_to_edge_2d(self.mouse_loc, SS_verts[0], SS_verts[1])
+            curr_dist = distance_point_to_edge_2d(self.mouse_loc, SS_verts[0], SS_verts[1])
 
-        #     if curr_dist <= min_distance:
-        #         min_distance = curr_dist
-        #         closest_edge = edge
+            if curr_dist <= min_distance:
+                min_distance = curr_dist
+                closest_edge = edge
 
-        # self.line = [v.co for v in closest_edge.verts]
+        self.rot_edge = [v for v in closest_edge.verts]
+        # remove the vertices belonging to the rotation axis edge from the selected vertices
+        self.moving_verts = [x for x in self.selected_verts if x not in self.rot_edge]
+
+        self.update()  
+
+
+    def update(self):
+
+        self.rot_axis = self.rot_edge[0].co - self.rot_edge[1].co
+
+        self.new_point_coors = self.rotate_verts(self.moving_verts)
+        self.new_edge_coors = self.rotate_verts(self.edge_verts)
 
 
     def rotate_verts(self, verts):
@@ -189,14 +205,14 @@ class MB_OT_ALIGN_FACE(Operator):
 
         for old_coor in old_point_coors:
             old_coor = old_coor.copy()
-            old_coor -= self.offset
+            old_coor -= self.rot_edge[0].co
 
             new_coor = rotate_point_around_axis(self.rot_axis, old_coor, self.angle)
 
             if self.mode == Modes.Project.name:
                 new_coor = self.rotation_length_compensation(new_coor)
 
-            new_coor += self.offset
+            new_coor += self.rot_edge[0].co
 
             new_point_coors.append(new_coor)
 
@@ -257,11 +273,15 @@ class MB_OT_ALIGN_FACE(Operator):
 
         gpu.state.line_width_set(1)
 
+
+
         # LINES
+        # ROTATION AXIS
 
         gpu.state.line_width_set(3)
 
-        coors = [vert.co for vert in self.active_verts]
+        
+        coors = [v.co for v in self.rot_edge]
         world_coors = coors_loc_to_world(coors, self.obj)
 
         shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
@@ -274,7 +294,7 @@ class MB_OT_ALIGN_FACE(Operator):
         gpu.state.line_width_set(1)
 
         # POINT
-
+        # where points will be moved to
         gpu.state.point_size_set(10)
 
         world_coors = coors_loc_to_world(self.new_point_coors, self.obj)
@@ -283,7 +303,7 @@ class MB_OT_ALIGN_FACE(Operator):
         batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": world_coors})
 
         shader_dots.bind()
-        shader_dots.uniform_float("color", (1, 1, 0, 1.0))
+        shader_dots.uniform_float("color", (1, 1, 1, 1.0))
         batch_dots.draw(shader_dots)
 
         gpu.state.point_size_set(1)
