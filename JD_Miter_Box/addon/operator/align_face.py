@@ -97,10 +97,8 @@ class MB_OT_ALIGN_FACE(Operator):
         self.inputmode = InputModes.Axis.name
         self.input_index = InputModes.Axis.value
         
-        # TODO : winding order approach will still break for more complex face selections
-        # instead create own ordering of vertices, based on the perimeter of selection!
-        self.active_face = self.bm.faces.active
-        self.winding_verts = []
+        # TODO : add a mode or autodetect whether to use the active face normal, or the average normal of all selected faces
+        self.normal = self.active_face.normal       
 
         
 
@@ -189,37 +187,33 @@ class MB_OT_ALIGN_FACE(Operator):
                 closest_edge = edge
 
         self.rot_edge = [v for v in closest_edge.verts]
-        self.find_rot_dir()
         # remove the vertices belonging to the rotation axis edge from the selected vertices
         self.moving_verts = [x for x in self.selected_verts if x not in self.rot_edge]
 
         self.update()  
 
-    def find_rot_dir(self):
-        # TODO : winding order approach will still break for more complex face selections
-        # instead create own ordering of vertices, based on the perimeter of selection!
-
-        for loop in self.active_face.loops:
-            self.winding_verts.append(loop.vert)
-
-        # find second vert of rot_edge in winding verts
-        # if previous vert is not rot_edge[0], then flip the order of rot_edge verts
-
-        second_idx = self.winding_verts.index(self.rot_edge[1])
-
-        if self.winding_verts[second_idx-1] is self.rot_edge[0]:
-            self.rot_edge.reverse()
-
 
     def update(self):
 
         self.rot_axis = self.rot_edge[0].co - self.rot_edge[1].co
+        self.fix_rot_dir()
 
-        self.new_point_coors = self.rotate_verts(self.moving_verts)
-        self.new_edge_coors = self.rotate_verts(self.edge_verts)
+        self.new_point_coors = self.rotate_verts(self.moving_verts, self.angle)
+        self.new_edge_coors = self.rotate_verts(self.edge_verts, self.angle)
 
 
-    def rotate_verts(self, verts):
+    def fix_rot_dir(self):
+        orig_coor = self.moving_verts[0]
+        new_coor = self.rotate_verts([orig_coor], 10)[0]
+
+        v_diff = new_coor - orig_coor.co
+
+        if v_diff.dot(self.normal) < 0:
+            print("reversing")
+            self.rot_axis *= -1
+
+
+    def rotate_verts(self, verts, angle):
 
         new_point_coors = []
         old_point_coors = [vert.co for vert in verts]
@@ -228,7 +222,7 @@ class MB_OT_ALIGN_FACE(Operator):
             old_coor = old_coor.copy()
             old_coor -= self.rot_edge[0].co
 
-            new_coor = rotate_point_around_axis(self.rot_axis, old_coor, self.angle)
+            new_coor = rotate_point_around_axis(self.rot_axis, old_coor, angle)
 
             if self.mode == Modes.Project.name:
                 new_coor = self.rotation_length_compensation(new_coor)
