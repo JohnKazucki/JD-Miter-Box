@@ -103,9 +103,9 @@ class MB_OT_ALIGN_FACE(Operator):
         
         # TODO : add a mode or autodetect whether to use the active face normal, or the average normal of all selected faces
         self.active_face = self.bm.faces.active
-        # self.sel_faces = [x for x in self.bm.faces if x.select]
-        # if self.active_face not in self.sel_faces:
-        #     self.active_face = self.sel_faces[0]
+        self.sel_faces = [x for x in self.bm.faces if x.select]
+        if self.active_face not in self.sel_faces:
+            self.active_face = self.sel_faces[0]
         self.normal = self.active_face.normal       
 
         
