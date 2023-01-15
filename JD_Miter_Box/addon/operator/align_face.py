@@ -20,6 +20,8 @@ from ..utility.math import distance_point_to_edge_2d, rotate_point_around_axis
 
 from ..utility.mesh import coors_loc_to_world
 
+from ..utility.bmesh import get_connected_verts
+
 Align_Face_kb_general = {
                         'mode' :
                             {'key':'V', 'desc':"Mode", 'var':'mode'},
@@ -30,6 +32,7 @@ Align_Face_kb_general = {
 class Modes(Enum):
     Rotate = 0
     Project = 1
+    Slide = 2
 
 class InputModes(Enum):
     Axis = 0
@@ -100,6 +103,9 @@ class MB_OT_ALIGN_FACE(Operator):
         
         # TODO : add a mode or autodetect whether to use the active face normal, or the average normal of all selected faces
         self.active_face = self.bm.faces.active
+        # self.sel_faces = [x for x in self.bm.faces if x.select]
+        # if self.active_face not in self.sel_faces:
+        #     self.active_face = self.sel_faces[0]
         self.normal = self.active_face.normal       
 
         
@@ -208,6 +214,11 @@ class MB_OT_ALIGN_FACE(Operator):
             self.new_point_coors = self.project_verts(self.moving_verts, self.angle, self.normal)
             self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal)
 
+        if self.mode == Modes.Slide.name:
+            slide_dirs = self.get_slide_directions(self.moving_verts)
+            self.new_point_coors = self.project_verts(self.moving_verts, self.angle, self.normal, slide_dirs)
+            slide_dirs = self.get_slide_directions(self.edge_verts)
+            self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal, slide_dirs)
 
     # TODO : this should really not be run during update
     def fix_rot_dir(self):
@@ -238,23 +249,55 @@ class MB_OT_ALIGN_FACE(Operator):
 
         return new_point_coors
 
-    def project_verts(self, verts, angle, direction):
+    
+    def get_slide_directions(self, verts):
+
+        slide_directions = []
+
+        for vert in verts:
+            # get the connected vertices that are not part of the selection
+            connected_verts = get_connected_verts(vert, exclude_selected=True)
+            
+            # get the first one
+            vert_end = connected_verts[0]
+            # get vector to it
+            dir = vert_end.co - vert.co
+            dir = dir.normalized()
+
+            # append it to dirs list
+            slide_directions.append(dir)
+
+        # return list
+        return slide_directions
+
+    def project_verts(self, verts, angle, normal, directions=[]):
 
         new_point_coors = []
         old_point_coors = [vert.co for vert in verts]
 
-        for vert in old_point_coors:
+        for index, vert in enumerate(old_point_coors):
+
+            if directions:
+                dir = directions[index]
+            else:
+                dir = normal
 
             # get offset from ideal plane that goes through rotation axis (prior to rotation)
-            plane_point = self.rot_edge[0].co
-            rel_coor = vert - plane_point
-            offset = rel_coor.dot(direction)
+            plane_point = self.rot_edge[0].co.copy()
 
-            v_offset = direction * offset
+            diff = intersect_line_plane(vert, vert+dir, plane_point, normal)
+            v_offset = vert-diff
 
-            plane_normal = rotate_point_around_axis(self.rot_axis, direction, angle)
+            pivot_offset = v_offset.dot(normal)
+            pivot_offset *= normal
+
+            plane_normal = rotate_point_around_axis(self.rot_axis, normal, angle)
+
+            if directions:
+                plane_point += pivot_offset
+                v_offset = Vector((0,0,0))
       
-            new_coor = intersect_line_plane(vert, vert+direction, plane_point, plane_normal)
+            new_coor = intersect_line_plane(vert, vert+dir, plane_point, plane_normal)
 
             new_coor += v_offset
 
