@@ -10,6 +10,7 @@ from bpy_extras.view3d_utils import location_3d_to_region_2d
 import traceback
 from enum import Enum
 
+from ..utility.addon import get_prefs
 from ..utility.draw.core import JDraw_Text_Box_Multi
 
 from mathutils import Vector
@@ -394,12 +395,21 @@ class MB_OT_ALIGN(Operator):
 
     def draw_shaders_3d(self, context):
 
-        # white
-        para_edge_color = (.9, 1, .9, 1.0)
+        prefs = get_prefs()
+        c_preview_geo = prefs.color.c_preview_geo
+        c_selected_geo = prefs.color.c_selected_geo
+        c_selected_geo_sec = prefs.color.c_selected_geo_sec
+        c_active_geo = prefs.color.c_active_geo
+        c_error_geo = prefs.color.c_error_geo
+        c_error_geo_sec = prefs.color.c_error_geo_sec
 
+        para_edge_color = c_active_geo
         if self.error:
-            # redish
-            para_edge_color = (.9, .1, .3, 1.0)
+            para_edge_color = c_error_geo
+
+        slide_edge_color = c_selected_geo
+        if self.error:
+            slide_edge_color = c_error_geo_sec
 
         # LINES
         # active edge, the guide edge
@@ -428,7 +438,7 @@ class MB_OT_ALIGN(Operator):
         batch_active = batch_for_shader(shader_active, 'LINES', {"pos": world_coors})
 
         shader_active.bind()
-        shader_active.uniform_float("color", (1, 1, 0, 1.0))
+        shader_active.uniform_float("color", c_selected_geo)
         batch_active.draw(shader_active)
 
 
@@ -443,12 +453,12 @@ class MB_OT_ALIGN(Operator):
         batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": [world_coors]})
 
         shader_dots.bind()
-        shader_dots.uniform_float("color", (1, 1, 0, 1.0))
+        shader_dots.uniform_float("color", c_selected_geo)
         batch_dots.draw(shader_dots)
 
         gpu.state.point_size_set(1)
 
-        if not self.error and self.mode == 'Slide':
+        if self.mode == 'Slide':
 
             # LINES
             # possible guide edges along which edge will be moved to make it parallel
@@ -460,7 +470,7 @@ class MB_OT_ALIGN(Operator):
             batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
             shader_moving_lines.bind()
-            shader_moving_lines.uniform_float("color", (.7, .7, 0, 1.0))
+            shader_moving_lines.uniform_float("color", c_selected_geo_sec)
             batch_moving_lines.draw(shader_moving_lines)
 
 
@@ -475,7 +485,7 @@ class MB_OT_ALIGN(Operator):
             batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
             shader_moving_lines.bind()
-            shader_moving_lines.uniform_float("color", para_edge_color)
+            shader_moving_lines.uniform_float("color", slide_edge_color)
             batch_moving_lines.draw(shader_moving_lines)
 
             gpu.state.line_width_set(1)

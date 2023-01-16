@@ -14,6 +14,7 @@ from bpy_extras.view3d_utils import location_3d_to_region_2d
 from mathutils import Vector, Matrix
 from mathutils.geometry import intersect_line_plane
 
+from ..utility.addon import get_prefs
 from ..utility.draw.core import JDraw_Text_Box_Multi
 
 from ..utility.math import distance_point_to_edge_2d, rotate_point_around_axis
@@ -344,21 +345,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
     def draw_shaders_3d(self, context):
 
-        # LINES
-
-        gpu.state.line_width_set(1)
-
-        world_coors = coors_loc_to_world(self.new_edge_coors, self.obj)
-
-        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
-
-        shader_moving_lines.bind()
-        shader_moving_lines.uniform_float("color", (.9, .9, .9, 1.0))
-        batch_moving_lines.draw(shader_moving_lines)
-
-        gpu.state.line_width_set(1)
-
+        prefs = get_prefs()
+        c_preview_geo = prefs.color.c_preview_geo
+        c_selected_geo = prefs.color.c_selected_geo
+        c_active_geo = prefs.color.c_active_geo
 
 
         # LINES
@@ -374,10 +364,51 @@ class MB_OT_ALIGN_FACE(Operator):
         batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
         shader_moving_lines.bind()
-        shader_moving_lines.uniform_float("color", (0, .9, .4, 1.0))
+        shader_moving_lines.uniform_float("color", c_active_geo)
         batch_moving_lines.draw(shader_moving_lines)
 
         gpu.state.line_width_set(1)
+
+
+        # --------------------------------------------------
+        # --------------------------------------------------
+
+        # POINT
+        # where points are
+        gpu.state.point_size_set(10)
+
+        coors = [vert.co for vert in self.moving_verts]
+        world_coors = coors_loc_to_world(coors, self.obj)
+
+        shader_dots = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": world_coors})
+
+        shader_dots.bind()
+        shader_dots.uniform_float("color", c_selected_geo)
+        batch_dots.draw(shader_dots)
+
+        gpu.state.point_size_set(1)
+
+        # LINES
+        # where edges are
+
+        gpu.state.line_width_set(1)
+
+        coors = [vert.co for vert in self.edge_verts]
+        world_coors = coors_loc_to_world(coors, self.obj)
+
+        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
+
+        shader_moving_lines.bind()
+        shader_moving_lines.uniform_float("color", c_selected_geo)
+        batch_moving_lines.draw(shader_moving_lines)
+
+        gpu.state.line_width_set(1)
+
+        # --------------------------------------------------
+        # --------------------------------------------------
+
 
         # POINT
         # where points will be moved to
@@ -389,10 +420,26 @@ class MB_OT_ALIGN_FACE(Operator):
         batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": world_coors})
 
         shader_dots.bind()
-        shader_dots.uniform_float("color", (1, 1, 1, 1.0))
+        shader_dots.uniform_float("color", c_preview_geo)
         batch_dots.draw(shader_dots)
 
         gpu.state.point_size_set(1)
+
+        # LINES
+        # where edges will be moved to
+
+        gpu.state.line_width_set(1)
+
+        world_coors = coors_loc_to_world(self.new_edge_coors, self.obj)
+
+        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
+
+        shader_moving_lines.bind()
+        shader_moving_lines.uniform_float("color", c_preview_geo)
+        batch_moving_lines.draw(shader_moving_lines)
+
+        gpu.state.line_width_set(1)
 
 
     def safe_draw_shader_2d(self, context):

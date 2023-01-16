@@ -1,7 +1,12 @@
 import bpy
 
-classes = (
+from .color import BM_Color
+from .addon import BM_Props
 
+# register BM_Props last!
+classes = (
+    BM_Color,
+    BM_Props,
 )
 
 
