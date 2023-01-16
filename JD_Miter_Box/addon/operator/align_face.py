@@ -94,6 +94,8 @@ class MB_OT_ALIGN_FACE(Operator):
         self.offset = self.rot_edge[0].co
 
         self.angle = 0
+
+        self.slide_dirs = []
         
         # input management variables
         self.mode = Modes.Rotate.name
@@ -216,10 +218,17 @@ class MB_OT_ALIGN_FACE(Operator):
             self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal)
 
         if self.mode == Modes.Slide.name:
-            slide_dirs = self.get_slide_directions(self.moving_verts, self.normal)
-            self.new_point_coors = self.project_verts(self.moving_verts, self.angle, self.normal, slide_dirs)
-            slide_dirs = self.get_slide_directions(self.edge_verts, self.normal)
-            self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal, slide_dirs)
+            self.slide_dirs = self.get_slide_directions(self.moving_verts, self.normal)
+            self.new_point_coors = self.project_verts(self.moving_verts, self.angle, self.normal, self.slide_dirs)
+            edge_slide_dirs = self.get_slide_directions(self.edge_verts, self.normal)
+            self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal, edge_slide_dirs)
+
+            self.slide_edges = []
+
+            for index, vert in enumerate(self.moving_verts):
+
+                self.slide_edges.append(vert.co - (self.slide_dirs[index]*5))
+                self.slide_edges.append(vert.co + (self.slide_dirs[index]*5))
 
     # TODO : this should really not be run during update
     def fix_rot_dir(self):
@@ -348,6 +357,7 @@ class MB_OT_ALIGN_FACE(Operator):
         prefs = get_prefs()
         c_preview_geo = prefs.color.c_preview_geo
         c_selected_geo = prefs.color.c_selected_geo
+        c_selected_geo_sec = prefs.color.c_selected_geo_sec
         c_active_geo = prefs.color.c_active_geo
 
 
@@ -440,6 +450,26 @@ class MB_OT_ALIGN_FACE(Operator):
         batch_moving_lines.draw(shader_moving_lines)
 
         gpu.state.line_width_set(1)
+
+
+
+        if self.mode == Modes.Slide.name:
+
+            # LINES
+            # Slide edges
+
+            gpu.state.line_width_set(1)
+
+            world_coors = coors_loc_to_world(self.slide_edges, self.obj)
+
+            shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+            batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
+
+            shader_moving_lines.bind()
+            shader_moving_lines.uniform_float("color", c_selected_geo_sec)
+            batch_moving_lines.draw(shader_moving_lines)
+
+            gpu.state.line_width_set(1)
 
 
     def safe_draw_shader_2d(self, context):
