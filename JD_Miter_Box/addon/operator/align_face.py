@@ -20,7 +20,7 @@ from ..utility.math import distance_point_to_edge_2d, rotate_point_around_axis
 
 from ..utility.mesh import coors_loc_to_world
 
-from ..utility.bmesh import get_connected_verts
+from ..utility.bmesh import get_connected_faces_of_vert, get_connected_verts
 
 Align_Face_kb_general = {
                         'mode' :
@@ -215,9 +215,9 @@ class MB_OT_ALIGN_FACE(Operator):
             self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal)
 
         if self.mode == Modes.Slide.name:
-            slide_dirs = self.get_slide_directions(self.moving_verts)
+            slide_dirs = self.get_slide_directions(self.moving_verts, self.normal)
             self.new_point_coors = self.project_verts(self.moving_verts, self.angle, self.normal, slide_dirs)
-            slide_dirs = self.get_slide_directions(self.edge_verts)
+            slide_dirs = self.get_slide_directions(self.edge_verts, self.normal)
             self.new_edge_coors = self.project_verts(self.edge_verts, self.angle, self.normal, slide_dirs)
 
     # TODO : this should really not be run during update
@@ -250,19 +250,34 @@ class MB_OT_ALIGN_FACE(Operator):
         return new_point_coors
 
     
-    def get_slide_directions(self, verts):
+    def get_slide_directions(self, verts, normal):
 
         slide_directions = []
 
         for vert in verts:
             # get the connected vertices that are not part of the selection
             connected_verts = get_connected_verts(vert, exclude_selected=True)
+            connected_faces = get_connected_faces_of_vert(vert, exclude_selected=True)
             
-            # get the first one
-            vert_end = connected_verts[0]
-            # get vector to it
-            dir = vert_end.co - vert.co
-            dir = dir.normalized()
+            # means there are slide edges we can use
+            if connected_verts:
+                # get the first one
+                vert_end = connected_verts[0]
+                # get vector to it
+                dir = vert_end.co - vert.co
+                dir = dir.normalized()
+            # means we have adjacent faces to build a slide direction from
+            elif connected_faces:
+                
+                face_N = connected_faces[0].normal
+                face_tan = face_N.cross(normal)
+                face_bitan = face_tan.cross(face_N)
+
+                dir = face_bitan
+
+            # geo has no unselected slide edges or faces, so must be an internal part of the selection
+            else:
+                dir = normal
 
             # append it to dirs list
             slide_directions.append(dir)

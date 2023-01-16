@@ -14,3 +14,17 @@ def get_connected_verts(vert, exclude_selected = False):
             connected_verts.append(other_vert)
 
     return connected_verts
+
+def get_connected_faces_of_vert(vert, exclude_selected = False):
+
+    connected_faces = []
+
+    for l in vert.link_edges:
+        for f in l.link_faces:
+            if exclude_selected:
+                if not f.select:
+                    connected_faces.append(f)
+            else:
+                connected_faces.append(f)
+
+    return connected_faces
