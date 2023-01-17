@@ -360,6 +360,8 @@ class MB_OT_ALIGN_FACE(Operator):
         c_selected_geo_sec = prefs.color.c_selected_geo_sec
         c_active_geo = prefs.color.c_active_geo
 
+        s_vertex = prefs.size.s_vertex
+
 
         # LINES
         # ROTATION AXIS
@@ -385,7 +387,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # POINT
         # where points are
-        gpu.state.point_size_set(10)
+        gpu.state.point_size_set(s_vertex)
 
         coors = [vert.co for vert in self.moving_verts]
         world_coors = coors_loc_to_world(coors, self.obj)
@@ -422,7 +424,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # POINT
         # where points will be moved to
-        gpu.state.point_size_set(10)
+        gpu.state.point_size_set(s_vertex)
 
         world_coors = coors_loc_to_world(self.new_point_coors, self.obj)
 
