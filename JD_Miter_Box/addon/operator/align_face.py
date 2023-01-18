@@ -4,7 +4,6 @@ import bmesh
 from bpy.types import Operator
 
 import traceback
-import math
 from enum import Enum
 
 import gpu
@@ -14,13 +13,15 @@ from bpy_extras.view3d_utils import location_3d_to_region_2d
 from mathutils import Vector, Matrix
 from mathutils.geometry import intersect_line_plane
 
+from bpy_extras import view3d_utils
+
 from ..utility.addon import get_prefs
 from ..utility.draw.core import JDraw_Text_Box_Multi
 
+import math
 from ..utility.math import distance_point_to_edge_2d, rotate_point_around_axis
 
-from ..utility.mesh import coors_loc_to_world
-
+from ..utility.mesh import coors_loc_to_world, coor_loc_to_world
 from ..utility.bmesh import get_connected_faces_of_vert, get_connected_verts
 
 Align_Face_kb_general = {
@@ -38,6 +39,7 @@ class Modes(Enum):
 class InputModes(Enum):
     Axis = 0
     Angle = 1
+    Face = 2
 
 class MB_OT_ALIGN_FACE(Operator):
     bl_idname = "object.mb_align_face"
@@ -90,6 +92,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.moving_verts = [x for x in self.selected_verts if x not in self.rot_edge]
 
         self.mouse_loc_prev = Vector((event.mouse_region_x, event.mouse_region_y))
+        self.mouse_loc = Vector((0,0))
 
         self.offset = self.rot_edge[0].co
 
@@ -130,31 +133,20 @@ class MB_OT_ALIGN_FACE(Operator):
         # Adjust
         if event.type == 'MOUSEMOVE':
             self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
-
-            if self.inputmode == InputModes.Axis.name:
-                self.update_input(context)
-
-            if self.inputmode == InputModes.Angle.name:
-
-                dist = event.mouse_x - event.mouse_prev_x
-
-                self.angle += dist/5
-
-                self.update()
+            self.dist = event.mouse_x - event.mouse_prev_x
 
         # Cycle modes
         if event.type == Align_Face_kb_general['mode']['key'] and event.value == 'PRESS':
             self.mode_index += 1
             self.mode_index %= len(Modes)
             self.mode = Modes(self.mode_index).name
-            self.update()
 
         # Cycle Input modes
         if event.type == Align_Face_kb_general['input']['key'] and event.value == 'PRESS':
             self.input_index += 1
             self.input_index %= len(InputModes)
             self.inputmode = InputModes(self.input_index).name
-            self.update_input(context)   
+
 
         # Confirm
         if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
@@ -168,12 +160,43 @@ class MB_OT_ALIGN_FACE(Operator):
 
             return {'FINISHED'}
 
+
+        self.update_input(context)
+        self.update()
+
         context.area.tag_redraw()
 
         return {"RUNNING_MODAL"}
 
 
     def update_input(self, context):
+        if self.inputmode == InputModes.Axis.name:
+            self.update_axis(context)
+
+        if self.inputmode == InputModes.Angle.name:
+            self.angle += self.dist/5
+
+        if self.inputmode == InputModes.Face.name:
+            self.angle = 0
+
+            # get normal
+            face_normal = self.update_face(context)
+
+            # calculate angle
+            if face_normal:
+                dot = face_normal.dot(self.normal)
+                if dot:
+                    self.angle = math.degrees(math.acos(dot))
+
+                    new_normal = rotate_point_around_axis(self.rot_axis, self.normal, self.angle)
+
+                    # print(1-new_normal.dot(face_normal))
+
+                    if 1- new_normal.dot(face_normal) > .0001:
+                        self.angle *= -1
+            
+
+    def update_axis(self, context):
         region = context.region
         rv3d = bpy.context.space_data.region_3d
         
@@ -203,6 +226,35 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.update()  
 
+
+    def update_face(self, context):
+
+        scene = context.scene
+        region = context.region
+        rv3d = context.region_data
+        coord = self.mouse_loc
+
+        # get the ray from the viewport and mouse
+        view_vector = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
+        ray_origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
+
+        ray_target = ray_origin + view_vector      
+
+        # raycast to face
+        # get normal
+
+
+        depsgraph = context.evaluated_depsgraph_get()
+        result, loc, norm_ws, index, obj, matrix = context.scene.ray_cast(depsgraph, ray_origin, view_vector)
+
+        if result:
+            return norm_ws
+
+        else:
+            return None
+
+
+        
 
     def update(self):
 
