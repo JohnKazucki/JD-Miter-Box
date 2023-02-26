@@ -19,7 +19,7 @@ from ..utility.addon import get_prefs
 from ..utility.draw.core import JDraw_Text_Box_Multi
 
 import math
-from ..utility.math import distance_point_to_edge_2d, rotate_point_around_axis
+from ..utility.math import distance_point_to_edge_2d, rotate_point_around_axis, clamp
 
 from ..utility.mesh import coors_loc_to_world, coor_loc_to_world
 from ..utility.bmesh import get_connected_faces_of_vert, get_connected_verts
@@ -186,6 +186,8 @@ class MB_OT_ALIGN_FACE(Operator):
             if face_normal:
                 dot = face_normal.dot(self.normal)
                 if dot:
+                    # account for floating point inaccuracies
+                    dot = clamp(dot, -1, 1)
                     self.angle = math.degrees(math.acos(dot))
 
                     new_normal = rotate_point_around_axis(self.rot_axis, self.normal, self.angle)
@@ -370,6 +372,8 @@ class MB_OT_ALIGN_FACE(Operator):
             plane_point = self.rot_edge[0].co.copy()
 
             diff = intersect_line_plane(vert, vert+dir, plane_point, normal)
+            if not diff:
+                diff = Vector((0,0,0))
             v_offset = vert-diff
 
             pivot_offset = v_offset.dot(normal)
@@ -382,6 +386,8 @@ class MB_OT_ALIGN_FACE(Operator):
                 v_offset = Vector((0,0,0))
       
             new_coor = intersect_line_plane(vert, vert+dir, plane_point, plane_normal)
+            if not new_coor:
+                new_coor = Vector((0,0,0))
 
             new_coor += v_offset
 
