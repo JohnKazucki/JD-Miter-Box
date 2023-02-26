@@ -8,6 +8,7 @@ from gpu_extras.batch import batch_for_shader
 
 from mathutils import Vector
 
+from enum import Enum
 import traceback
 
 from ...utility.addon import get_prefs
@@ -18,6 +19,19 @@ from ...utility.mesh import coors_loc_to_world
 from ...utility.interaction import face_normal_cursor
 from ...utility.shaders.primitives import plane_center, line
 
+from ...utility.draw.core import JDraw_Text_Box_Multi
+
+
+
+class Modes(Enum):
+    Rotate = 0
+    Project = 1
+    Slide = 2
+
+Align_Face_kb_general = {
+                        'mode' :
+                            {'key':'V', 'desc':"Mode", 'var':'mode'},
+}
 
 
 class MB_OT_ALIGN_FACE(Operator):
@@ -54,7 +68,9 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.rot_edge = [v for v in self.selected_edges[0].verts]
 
-        self.get_colors()
+        self.setup_colors()
+        self.setup_input()
+
 
 
         self.active_face = self.bm.faces.active
@@ -66,7 +82,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.mouse_loc = Vector((0,0))
 
 
-    def get_colors(self):
+    def setup_colors(self):
         prefs = get_prefs()
 
         self.c_preview_geo = prefs.color.c_preview_geo
@@ -79,17 +95,16 @@ class MB_OT_ALIGN_FACE(Operator):
         self.s_vertex = prefs.size.s_vertex
         
 
-        
+    def setup_input(self):
+        # input management variables
+        self.mode = Modes.Rotate.name
+        self.mode_index = Modes.Rotate.value
 
     def modal(self, context, event):
 
         # Free navigation
         if event.type in ('MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'):
             return {'PASS_THROUGH'}
-
-        # Adjust
-        if event.type == 'MOUSEMOVE':
-            self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
 
         # Cancel
         if event.type == 'RIGHTMOUSE' and event.value == 'PRESS':
@@ -98,6 +113,18 @@ class MB_OT_ALIGN_FACE(Operator):
 
             self.remove_shaders(context)
             return {'CANCELLED'}
+
+        # Adjust
+        if event.type == 'MOUSEMOVE':
+            self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
+
+        # Cycle modes
+        if event.type == Align_Face_kb_general['mode']['key'] and event.value == 'PRESS':
+            self.mode_index += 1
+            self.mode_index %= len(Modes)
+            self.mode = Modes(self.mode_index).name
+
+
 
         face_normal = face_normal_cursor(self.mouse_loc, context)
         if face_normal:
@@ -133,26 +160,27 @@ class MB_OT_ALIGN_FACE(Operator):
 
     def draw_shaders_3d(self, context):
         
-        axis_z = self.normal
-        axis_x = self.normal.cross(Vector((0,0,1)))
-        axis_y = self.normal.cross(axis_x)
 
-        axis_x.normalize()
-        axis_y.normalize()
-        axis_z.normalize()
+        if self.mode == Modes.Project.name:
+            axis_z = self.normal
+            axis_x = self.normal.cross(Vector((0,0,1)))
+            axis_y = self.normal.cross(axis_x)
 
-        center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
+            axis_x.normalize()
+            axis_y.normalize()
+            axis_z.normalize()
 
-        plane_center(center, axis_x, axis_y, axis_z, 0.5, self.c_selected_geo_sec)
-        line(center, axis_x, axis_y, axis_z, .2, 2, self.c_selected_geo_sec)
+            center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
 
+            plane_center(center, axis_x, axis_y, axis_z, 0.5, self.c_selected_geo_sec)
+            line(center, axis_x, axis_y, axis_z, .2, 2, self.c_selected_geo_sec)
+            # --------------------------------------------------
 
         # LINES
         # ROTATION AXIS
 
         gpu.state.line_width_set(3)
 
-        
         coors = [v.co for v in self.rot_edge]
         world_coors = coors_loc_to_world(coors, self.obj)
 
@@ -164,10 +192,6 @@ class MB_OT_ALIGN_FACE(Operator):
         batch_moving_lines.draw(shader_moving_lines)
 
         gpu.state.line_width_set(1)
-
-
-        # --------------------------------------------------
-
 
 
 
@@ -182,6 +206,19 @@ class MB_OT_ALIGN_FACE(Operator):
             self.remove_shaders(context)
 
     def draw_shaders_2d(self, context):
-        pass
+
+        texts = []
+
+        kb_string = "({key}) {desc}"
+        kb_status = ": {var}"
+
+        # general
+        for _, keys in Align_Face_kb_general.items():
+            if keys.get('var'):
+                status = kb_status.format(var=getattr(self, keys['var']))
+            texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
+
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
+        textbox.draw()
 
     # ------------------------------
