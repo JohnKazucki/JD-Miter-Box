@@ -1,5 +1,5 @@
 
-from mathutils import Vector, Quaternion
+from mathutils import Vector, Quaternion, Matrix
 
 import math
 
@@ -47,3 +47,17 @@ def rotate_point_around_axis(axis, point, angledeg):
     new_point = rot_quat @ point
 
     return new_point
+
+
+# based on https://stackoverflow.com/questions/19621069/3d-rotation-matrix-rotate-to-another-reference-system
+def rotate_to_space(vectors, axis_x, axis_y, axis_z):
+    rotMat = Matrix(( (axis_x[0], axis_y[0], axis_z[0]),
+                    (axis_x[1], axis_y[1], axis_z[1]),
+                    (axis_x[2], axis_y[2], axis_z[2]),   ))
+
+    new_vectors = []
+    for vec in vectors:
+        vec = rotMat @ vec
+        new_vectors.append(vec)
+
+    return new_vectors

@@ -16,13 +16,13 @@ class BM_Color(bpy.types.PropertyGroup):
     c_selected_geo : FloatVectorProperty(
         name = "Selected Geometry", description = "color for highlighting the selected geometry",
         size = 4, min = 0.0, max = 1.0,
-        subtype='COLOR', default=(1, 1, 0.0, 0.9)
+        subtype='COLOR', default=(1, 1, 0.1, 0.9)
     )
 
     c_selected_geo_sec : FloatVectorProperty(
         name = "Selected Geometry Secondary", description = "secondary color for highlighting the selected geometry",
         size = 4, min = 0.0, max = 1.0,
-        subtype='COLOR', default=(.7, .7, 0.0, 0.7)
+        subtype='COLOR', default=(.7, .6, 0.25, 0.4)
     )
 
     c_active_geo : FloatVectorProperty(

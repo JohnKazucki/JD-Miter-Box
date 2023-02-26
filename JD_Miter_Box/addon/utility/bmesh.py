@@ -1,6 +1,25 @@
 import bpy
 import bmesh
 
+
+def get_selected_verts(bm):
+    selected_verts = []
+
+    for v in bm.verts:
+        if v.select:
+            selected_verts.append(v)
+
+    return selected_verts
+
+def get_selected_edges(bm):
+    selected_edges = []
+
+    for e in bm.edges:
+        if e.select:
+            selected_edges.append(e)
+
+    return selected_edges
+
 def get_connected_verts(vert, exclude_selected = False):
     # taken from https://blenderartists.org/t/how-to-get-vertex-position-and-connected-vertices/1185279
     # get its connected vertices (filter out the other selected)
