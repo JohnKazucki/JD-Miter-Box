@@ -34,6 +34,25 @@ Align_Face_kb_general = {
 }
 
 
+class Modify(Enum):
+    Mod_None = 0
+    Axis = 1
+    Align_Face = 2
+    Angle = 3
+    Projection_Dir = 4
+
+Align_Face_kb_modify = {
+                        'angle' :
+                            {'key':'G', 'desc':"Angle", 'var':'angle', 'state':3},
+                        'rot_axis' :
+                            {'key':'R', 'desc':"Rotation Axis", 'state':1},
+                        'align_to_face' :
+                            {'key':'F', 'desc':"Align to Face", 'state':2},
+                        'projection_dir' :
+                            {'key':'B', 'desc':"Projection Direction", 'state':4},
+}
+
+
 class MB_OT_ALIGN_FACE(Operator):
     bl_idname = "object.mb_align_face"
     bl_label = "Align Face"
@@ -79,8 +98,9 @@ class MB_OT_ALIGN_FACE(Operator):
             self.active_face = self.sel_faces[0]
         self.normal = self.active_face.normal 
 
-        self.mouse_loc = Vector((0,0))
+        self.angle = 0
 
+        
 
     def setup_colors(self):
         prefs = get_prefs()
@@ -99,6 +119,11 @@ class MB_OT_ALIGN_FACE(Operator):
         # input management variables
         self.mode = Modes.Rotate.name
         self.mode_index = Modes.Rotate.value
+
+        self.modify = Modify.Mod_None.value
+
+        self.mouse_loc = Vector((0,0))
+
 
     def modal(self, context, event):
 
@@ -125,14 +150,27 @@ class MB_OT_ALIGN_FACE(Operator):
             self.mode = Modes(self.mode_index).name
 
 
+        if self.mode == Modes.Project.name:
+            if event.type == Align_Face_kb_modify['projection_dir']['key'] and event.value == 'PRESS':
+                if self.modify != Modify.Projection_Dir.value:
+                    self.modify = Modify.Projection_Dir.value
+                else:
+                    self.modify = Modify.Mod_None.value
 
-        face_normal = face_normal_cursor(self.mouse_loc, context)
-        if face_normal:
-            self.normal = face_normal
+
+
+        self.update(context)
 
         context.area.tag_redraw()
 
         return {"RUNNING_MODAL"}
+
+
+    def update(self, context):
+        if self.modify == Modify.Projection_Dir.value:
+            face_normal = face_normal_cursor(self.mouse_loc, context)
+            if face_normal:
+                self.normal = face_normal
 
 
     # -- SHADERS
@@ -195,7 +233,6 @@ class MB_OT_ALIGN_FACE(Operator):
 
 
 
-
     def safe_draw_shader_2d(self, context):
 
         try:
@@ -210,12 +247,27 @@ class MB_OT_ALIGN_FACE(Operator):
         texts = []
 
         kb_string = "({key}) {desc}"
-        kb_status = ": {var}"
+        kb_value = ": {var}"
 
         # general
         for _, keys in Align_Face_kb_general.items():
+            status = ""
             if keys.get('var'):
-                status = kb_status.format(var=getattr(self, keys['var']))
+                status = kb_value.format(var=getattr(self, keys['var']))
+            texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
+
+        texts.append("")
+
+        # modify keys
+        for _, keys in Align_Face_kb_modify.items():
+            value = ""
+            if keys.get('var'):
+                value = str(getattr(self, keys['var']))
+            state = ""
+            if keys.get('state') == self.modify:
+                state = " - Modifying"
+            
+            status = kb_value.format(var=value + state)
             texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
 
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
