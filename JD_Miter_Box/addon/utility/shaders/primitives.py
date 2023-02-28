@@ -56,3 +56,30 @@ def line(location, axis_x, axis_y, axis_z, length, thickness, color):
         batch_moving_lines.draw(shader_moving_lines)
 
         gpu.state.line_width_set(1)
+
+def edges(locations, thickness, color):
+
+    gpu.state.line_width_set(thickness)
+
+    shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+    batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": locations})
+
+    shader_moving_lines.bind()
+    shader_moving_lines.uniform_float("color", color)
+    batch_moving_lines.draw(shader_moving_lines)
+
+    gpu.state.line_width_set(1)
+
+
+def points(locations, size, color):
+
+    gpu.state.point_size_set(size)
+
+    shader_dots = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+    batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": locations})
+
+    shader_dots.bind()
+    shader_dots.uniform_float("color", color)
+    batch_dots.draw(shader_dots)
+
+    gpu.state.point_size_set(1)

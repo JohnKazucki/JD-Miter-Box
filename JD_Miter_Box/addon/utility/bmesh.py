@@ -20,6 +20,15 @@ def get_selected_edges(bm):
 
     return selected_edges
 
+def get_selected_edge_verts(bm):
+    selected_edge_verts = []
+
+    for e in bm.edges:
+        if e.select:
+            selected_edge_verts += e.verts
+
+    return selected_edge_verts
+
 def get_connected_verts(vert, exclude_selected = False):
     # taken from https://blenderartists.org/t/how-to-get-vertex-position-and-connected-vertices/1185279
     # get its connected vertices (filter out the other selected)

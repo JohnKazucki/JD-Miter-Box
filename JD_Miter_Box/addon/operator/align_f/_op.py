@@ -11,14 +11,18 @@ from mathutils import Vector
 from enum import Enum
 import traceback
 
+
+from .project import project_verts
+
+
 from ...utility.addon import get_prefs
 
-from ...utility.bmesh import get_selected_verts, get_selected_edges
+from ...utility.bmesh import get_selected_edge_verts, get_selected_verts, get_selected_edges
 from ...utility.mesh import coors_loc_to_world
 
 from ...utility.interaction import face_normal_cursor
-from ...utility.shaders.primitives import plane_center, line
 
+from ...utility.shaders.primitives import edges, plane_center, line, points
 from ...utility.draw.core import JDraw_Text_Box_Multi
 
 
@@ -43,7 +47,7 @@ class Modify(Enum):
 
 Align_Face_kb_modify = {
                         'angle' :
-                            {'key':'G', 'desc':"Angle", 'var':'angle', 'state':3},
+                            {'key':'G', 'desc':"Angle", 'var':'str_angle', 'state':3},
                         'rot_axis' :
                             {'key':'R', 'desc':"Rotation Axis", 'state':1},
                         'align_to_face' :
@@ -84,12 +88,18 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.selected_edges = get_selected_edges(self.bm)
         self.selected_verts = get_selected_verts(self.bm)
+        self.selected_edge_verts = get_selected_edge_verts(self.bm)
+
+        self.new_point_coors = [v.co for v in self.selected_verts]
+        self.selected_edge_verts_coors = [v.co for v in self.selected_edge_verts]
 
         self.rot_edge = [v for v in self.selected_edges[0].verts]
+        self.rot_axis = self.rot_edge[0].co - self.rot_edge[1].co
+        self.rot_pivot = self.rot_edge[0].co + (self.rot_edge[0].co - self.rot_edge[1].co)/2
 
         self.setup_colors()
         self.setup_input()
-
+        self.setup_UI()
 
 
         self.active_face = self.bm.faces.active
@@ -98,7 +108,7 @@ class MB_OT_ALIGN_FACE(Operator):
             self.active_face = self.sel_faces[0]
         self.normal = self.active_face.normal 
 
-        self.angle = 0
+        self.angle = 0.0
 
         
 
@@ -124,6 +134,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.mouse_loc = Vector((0,0))
 
+    
+    def setup_UI(self):
+        self.str_angle = "Angle: %.2f" %0
+
 
     def modal(self, context, event):
 
@@ -139,9 +153,22 @@ class MB_OT_ALIGN_FACE(Operator):
             self.remove_shaders(context)
             return {'CANCELLED'}
 
+        # Confirm
+        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+
+            self.remove_shaders(context)
+
+            for index, vert in enumerate(self.selected_verts):
+                vert.co = self.new_point_coors[index]
+            
+            bmesh.update_edit_mesh(self.objdata)
+
+            return {'FINISHED'}
+
         # Adjust
         if event.type == 'MOUSEMOVE':
             self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
+            self.dist = event.mouse_x - event.mouse_prev_x
 
         # Cycle modes
         if event.type == Align_Face_kb_general['mode']['key'] and event.value == 'PRESS':
@@ -150,27 +177,46 @@ class MB_OT_ALIGN_FACE(Operator):
             self.mode = Modes(self.mode_index).name
 
 
+        # Projection mode - projection normal 
         if self.mode == Modes.Project.name:
             if event.type == Align_Face_kb_modify['projection_dir']['key'] and event.value == 'PRESS':
+                self.dist = 0
                 if self.modify != Modify.Projection_Dir.value:
                     self.modify = Modify.Projection_Dir.value
                 else:
                     self.modify = Modify.Mod_None.value
 
+        # Any mode - angle
+        if event.type == Align_Face_kb_modify['angle']['key'] and event.value == 'PRESS':
+            self.dist = 0
+            if self.modify != Modify.Angle.value:
+                self.modify = Modify.Angle.value
+            else:
+                self.modify = Modify.Mod_None.value
 
 
-        self.update(context)
+
+        self.update_input(context)
+        self.update()
 
         context.area.tag_redraw()
 
         return {"RUNNING_MODAL"}
 
 
-    def update(self, context):
+    def update(self):
+        if self.mode == Modes.Project.name:
+            self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
+            self.selected_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
+
+    def update_input(self, context):
         if self.modify == Modify.Projection_Dir.value:
             face_normal = face_normal_cursor(self.mouse_loc, context)
             if face_normal:
                 self.normal = face_normal
+        if self.modify == Modify.Angle.value:
+            self.angle += self.dist/5
+            self.str_angle = "Angle: %.2f" %self.angle
 
 
     # -- SHADERS
@@ -199,6 +245,7 @@ class MB_OT_ALIGN_FACE(Operator):
     def draw_shaders_3d(self, context):
         
 
+        # projection normal direction
         if self.mode == Modes.Project.name:
             axis_z = self.normal
             axis_x = self.normal.cross(Vector((0,0,1)))
@@ -212,10 +259,9 @@ class MB_OT_ALIGN_FACE(Operator):
 
             plane_center(center, axis_x, axis_y, axis_z, 0.5, self.c_selected_geo_sec)
             line(center, axis_x, axis_y, axis_z, .2, 2, self.c_selected_geo_sec)
-            # --------------------------------------------------
+        # --------------------------------------------------
 
-        # LINES
-        # ROTATION AXIS
+        # rotation axis
 
         gpu.state.line_width_set(3)
 
@@ -230,6 +276,20 @@ class MB_OT_ALIGN_FACE(Operator):
         batch_moving_lines.draw(shader_moving_lines)
 
         gpu.state.line_width_set(1)
+
+        # --------------------------------------------------
+
+        # new point positions
+        coors = self.new_point_coors
+        world_coors = coors_loc_to_world(coors, self.obj)
+        points(world_coors, self.s_vertex, self.c_preview_geo)
+
+        # new edge positions
+
+        coors = self.selected_edge_verts_coors
+        world_coors = coors_loc_to_world(coors, self.obj)
+        edges(world_coors, 1, self.c_preview_geo)
+
 
 
 
