@@ -8,15 +8,16 @@ from mathutils import Vector
 from ..math import rotate_to_space
 
 
-def plane_center(location, axis_x, axis_y, axis_z, size, color):
+def plane_center(location, axis_x, axis_y, axis_z, size_x, size_y, color):
     # TRIS
     gpu.state.blend_set('ALPHA')
 
-    size = size/2
+    size_x = size_x/2
+    size_y = size_y/2
 
     positions = (
-        Vector((-size,  size, 0)), Vector((size,  size, 0)),
-        Vector((-size, -size, 0)), Vector((size, -size, 0))
+        Vector((-size_x,  size_y, 0)), Vector((size_x,  size_y, 0)),
+        Vector((-size_x, -size_y, 0)), Vector((size_x, -size_y, 0))
         )
 
     indices = ((0, 1, 2), (2, 1, 3))

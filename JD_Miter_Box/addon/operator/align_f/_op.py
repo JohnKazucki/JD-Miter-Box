@@ -13,12 +13,15 @@ import traceback
 
 
 from .project import project_verts
+from .axis import update_axis
 
 
 from ...utility.addon import get_prefs
 
 from ...utility.bmesh import get_selected_edge_verts, get_selected_verts, get_selected_edges
-from ...utility.mesh import coors_loc_to_world
+from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
+
+from ...utility.math import rotate_to_space
 
 from ...utility.interaction import face_normal_cursor
 
@@ -91,16 +94,14 @@ class MB_OT_ALIGN_FACE(Operator):
         self.selected_edge_verts = get_selected_edge_verts(self.bm)
 
         self.new_point_coors = [v.co for v in self.selected_verts]
-        self.selected_edge_verts_coors = [v.co for v in self.selected_edge_verts]
+        self.new_edge_verts_coors = [v.co for v in self.selected_edge_verts]
 
         self.rot_edge = [v for v in self.selected_edges[0].verts]
+        if self.bm.select_mode == {'EDGE'}:
+            self.rot_edge = [v for v in self.bm.select_history.active.verts]
+        
         self.rot_axis = self.rot_edge[0].co - self.rot_edge[1].co
         self.rot_pivot = self.rot_edge[0].co + (self.rot_edge[0].co - self.rot_edge[1].co)/2
-
-        self.setup_colors()
-        self.setup_input()
-        self.setup_UI()
-
 
         self.active_face = self.bm.faces.active
         self.sel_faces = [x for x in self.bm.faces if x.select]
@@ -110,7 +111,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.angle = 0.0
 
-        
+        self.setup_colors()
+        self.setup_input()
+        self.setup_UI()
+
 
     def setup_colors(self):
         prefs = get_prefs()
@@ -194,6 +198,14 @@ class MB_OT_ALIGN_FACE(Operator):
             else:
                 self.modify = Modify.Mod_None.value
 
+        # Any mode - rotation axis
+        if event.type == Align_Face_kb_modify['rot_axis']['key'] and event.value == 'PRESS':
+            self.dist = 0
+            if self.modify != Modify.Axis.value:
+                self.modify = Modify.Axis.value
+            else:
+                self.modify = Modify.Mod_None.value
+
 
 
         self.update_input(context)
@@ -207,7 +219,7 @@ class MB_OT_ALIGN_FACE(Operator):
     def update(self):
         if self.mode == Modes.Project.name:
             self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
-            self.selected_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
+            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
 
     def update_input(self, context):
         if self.modify == Modify.Projection_Dir.value:
@@ -217,6 +229,8 @@ class MB_OT_ALIGN_FACE(Operator):
         if self.modify == Modify.Angle.value:
             self.angle += self.dist/5
             self.str_angle = "Angle: %.2f" %self.angle
+        if self.modify == Modify.Axis.value:
+            self.rot_edge, self.rot_axis, self.rot_pivot = update_axis(self, context)
 
 
     # -- SHADERS
@@ -256,8 +270,23 @@ class MB_OT_ALIGN_FACE(Operator):
             axis_z.normalize()
 
             center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
+            center = coor_loc_to_world(center, self.obj)
 
-            plane_center(center, axis_x, axis_y, axis_z, 0.5, self.c_selected_geo_sec)
+            coors = [v.co for v in self.selected_edge_verts]
+
+            coors_x = [coor[0] for coor in coors]
+            min_x = min(coors_x)
+            max_x = max(coors_x)
+            coors_y = [coor[1] for coor in coors]
+            min_y = min(coors_y)
+            max_y = max(coors_y)
+
+            size_x = abs(max_x-min_x)
+            size_y = abs(max_y-min_y)
+
+            size = max([size_x, size_y])
+
+            plane_center(center, axis_x, axis_y, axis_z, size, size, self.c_selected_geo_sec)
             line(center, axis_x, axis_y, axis_z, .2, 2, self.c_selected_geo_sec)
         # --------------------------------------------------
 
@@ -286,7 +315,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # new edge positions
 
-        coors = self.selected_edge_verts_coors
+        coors = self.new_edge_verts_coors
         world_coors = coors_loc_to_world(coors, self.obj)
         edges(world_coors, 1, self.c_preview_geo)
 
