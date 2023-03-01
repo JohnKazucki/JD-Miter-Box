@@ -1,4 +1,4 @@
-from JD_Miter_Box.addon.operator.align_f.slide import get_slide_directions
+
 import bpy
 import bmesh
 
@@ -12,8 +12,10 @@ from mathutils import Vector
 from enum import Enum
 import traceback
 
-
+from .rotate import rotate_verts, fix_rot_dir
 from .project import project_verts
+from .slide import get_slide_directions
+
 from .axis import update_axis
 
 
@@ -22,7 +24,6 @@ from ...utility.addon import get_prefs
 from ...utility.bmesh import get_selected_edge_verts, get_selected_verts, get_selected_edges
 from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
 
-from ...utility.math import rotate_to_space
 
 from ...utility.interaction import face_normal_cursor
 
@@ -86,6 +87,8 @@ class MB_OT_ALIGN_FACE(Operator):
             
         context.window_manager.modal_handler_add(self)
 
+        self.update()
+
         return {"RUNNING_MODAL"}
 
     def setup(self, event):
@@ -102,6 +105,7 @@ class MB_OT_ALIGN_FACE(Operator):
             self.rot_edge = [v for v in self.bm.select_history.active.verts]
         
         self.rot_axis = self.rot_edge[0].co - self.rot_edge[1].co
+        self.rot_axis.normalize()
         self.rot_pivot = self.rot_edge[0].co + (self.rot_edge[0].co - self.rot_edge[1].co)/2
 
         self.active_face = self.bm.faces.active
@@ -135,8 +139,9 @@ class MB_OT_ALIGN_FACE(Operator):
 
     def setup_input(self):
         # input management variables
-        self.mode = Modes.Slide.name
-        self.mode_index = Modes.Rotate.value
+        default_mode = Modes.Slide
+        self.mode = default_mode.name
+        self.mode_index = default_mode.value
 
         self.modify = Modify.Mod_None.value
 
@@ -230,6 +235,9 @@ class MB_OT_ALIGN_FACE(Operator):
 
 
     def update(self):
+        if self.mode == Modes.Rotate.name:
+            self.new_point_coors = rotate_verts(self.selected_verts, self.angle, self.rot_axis, self.rot_edge)
+            self.new_edge_verts_coors = rotate_verts(self.selected_edge_verts, self.angle, self.rot_axis, self.rot_edge)
         if self.mode == Modes.Project.name:
             self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
             self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
@@ -246,6 +254,7 @@ class MB_OT_ALIGN_FACE(Operator):
             face_normal = face_normal_cursor(self.mouse_loc, context)
             if face_normal:
                 self.normal = face_normal
+
         if self.modify == Modify.Angle.value:
             self.input_angle += self.dist/5
             self.angle = self.input_angle
@@ -257,8 +266,10 @@ class MB_OT_ALIGN_FACE(Operator):
                 self.angle *= 5
 
             self.str_angle = "%.2f" %self.angle
+
         if self.modify == Modify.Axis.value:
             self.rot_edge, self.rot_axis, self.rot_pivot = update_axis(self, context)
+            self.rot_axis = fix_rot_dir(self.selected_verts, self.rot_axis, self.rot_edge, self.normal)
 
 
     # -- SHADERS
