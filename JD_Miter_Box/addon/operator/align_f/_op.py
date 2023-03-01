@@ -1,3 +1,4 @@
+from JD_Miter_Box.addon.operator.align_f.slide import get_slide_directions
 import bpy
 import bmesh
 
@@ -55,8 +56,8 @@ Align_Face_kb_modify = {
                             {'key':'R', 'desc':"Rotation Axis", 'state':1},
                         'align_to_face' :
                             {'key':'F', 'desc':"Align to Face", 'state':2},
-                        'projection_dir' :
-                            {'key':'B', 'desc':"Projection Direction", 'state':4},
+                        'orient_dir' :
+                            {'key':'B', 'desc':"Orientation", 'state':4},
 }
 
 
@@ -109,7 +110,10 @@ class MB_OT_ALIGN_FACE(Operator):
             self.active_face = self.sel_faces[0]
         self.normal = self.active_face.normal 
 
+        self.input_angle = 0.0
         self.angle = 0.0
+
+        self.slide_dirs = []
 
         self.setup_colors()
         self.setup_input()
@@ -131,16 +135,18 @@ class MB_OT_ALIGN_FACE(Operator):
 
     def setup_input(self):
         # input management variables
-        self.mode = Modes.Rotate.name
+        self.mode = Modes.Slide.name
         self.mode_index = Modes.Rotate.value
 
         self.modify = Modify.Mod_None.value
 
         self.mouse_loc = Vector((0,0))
 
+        self.snapping = False
+
     
     def setup_UI(self):
-        self.str_angle = "Angle: %.2f" %0
+        self.str_angle = "%.2f" %0
 
 
     def modal(self, context, event):
@@ -174,6 +180,13 @@ class MB_OT_ALIGN_FACE(Operator):
             self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
             self.dist = event.mouse_x - event.mouse_prev_x
 
+        # Snapping
+        if event.type in ('LEFT_CTRL', 'RIGHT_CTRL'):
+            if event.value == 'PRESS':
+                self.snapping = True
+            elif event.value == 'RELEASE':
+                self.snapping = False
+
         # Cycle modes
         if event.type == Align_Face_kb_general['mode']['key'] and event.value == 'PRESS':
             self.mode_index += 1
@@ -181,9 +194,9 @@ class MB_OT_ALIGN_FACE(Operator):
             self.mode = Modes(self.mode_index).name
 
 
-        # Projection mode - projection normal 
-        if self.mode == Modes.Project.name:
-            if event.type == Align_Face_kb_modify['projection_dir']['key'] and event.value == 'PRESS':
+        # Projection/Slide mode - orientation normal 
+        if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
+            if event.type == Align_Face_kb_modify['orient_dir']['key'] and event.value == 'PRESS':
                 self.dist = 0
                 if self.modify != Modify.Projection_Dir.value:
                     self.modify = Modify.Projection_Dir.value
@@ -220,6 +233,13 @@ class MB_OT_ALIGN_FACE(Operator):
         if self.mode == Modes.Project.name:
             self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
             self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
+        if self.mode == Modes.Slide.name:
+            self.slide_dirs = get_slide_directions(self.selected_verts, self.normal)
+            self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.slide_dirs)
+            
+            self.edge_slide_dirs = get_slide_directions(self.selected_edge_verts, self.normal)
+            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.edge_slide_dirs)        
+
 
     def update_input(self, context):
         if self.modify == Modify.Projection_Dir.value:
@@ -227,8 +247,16 @@ class MB_OT_ALIGN_FACE(Operator):
             if face_normal:
                 self.normal = face_normal
         if self.modify == Modify.Angle.value:
-            self.angle += self.dist/5
-            self.str_angle = "Angle: %.2f" %self.angle
+            self.input_angle += self.dist/5
+            self.angle = self.input_angle
+
+            # if snapping enabled
+            if self.snapping:
+                self.angle /= 5
+                self.angle = round(self.angle)
+                self.angle *= 5
+
+            self.str_angle = "%.2f" %self.angle
         if self.modify == Modify.Axis.value:
             self.rot_edge, self.rot_axis, self.rot_pivot = update_axis(self, context)
 
@@ -259,8 +287,8 @@ class MB_OT_ALIGN_FACE(Operator):
     def draw_shaders_3d(self, context):
         
 
-        # projection normal direction
-        if self.mode == Modes.Project.name:
+        # projection/slide orientation direction
+        if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
             axis_z = self.normal
             axis_x = self.normal.cross(Vector((0,0,1)))
             axis_y = self.normal.cross(axis_x)
@@ -284,11 +312,29 @@ class MB_OT_ALIGN_FACE(Operator):
             size_x = abs(max_x-min_x)
             size_y = abs(max_y-min_y)
 
-            size = max([size_x, size_y])
+            size = max([size_x, size_y])/2
 
             plane_center(center, axis_x, axis_y, axis_z, size, size, self.c_selected_geo_sec)
-            line(center, axis_x, axis_y, axis_z, .2, 2, self.c_selected_geo_sec)
+            line(center, axis_x, axis_y, axis_z, size, 2, self.c_selected_geo_sec)
         # --------------------------------------------------
+
+        # slide direction edges
+        if self.mode == Modes.Slide.name:
+
+            self.slide_edges = []
+
+            for index, position in enumerate(self.new_point_coors):
+
+                self.slide_edges.append(position - (self.slide_dirs[index]*0.1))
+                self.slide_edges.append(position + (self.slide_dirs[index]*0.1))
+            
+            # slide edges
+
+            coors = self.slide_edges
+            world_coors = coors_loc_to_world(coors, self.obj)
+            edges(world_coors, 1, self.c_preview_geo)
+        # --------------------------------------------------
+
 
         # rotation axis
 
@@ -358,6 +404,10 @@ class MB_OT_ALIGN_FACE(Operator):
             
             status = kb_value.format(var=value + state)
             texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
+
+        texts.append("")
+
+        texts.append("Hold Ctrl for snapping")
 
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
         textbox.draw()
