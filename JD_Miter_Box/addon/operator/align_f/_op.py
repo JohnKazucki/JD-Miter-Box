@@ -215,6 +215,7 @@ class MB_OT_ALIGN_FACE(Operator):
                     self.snapping = False
                 else:
                     self.snapping = True
+                    
 
         # Cycle modes
         if event.type == Align_Face_kb_general['mode']['key'] and event.value == 'PRESS':
@@ -299,7 +300,7 @@ class MB_OT_ALIGN_FACE(Operator):
             if self.snapping:
                 self.angle = self.curr_angle + round_to_integer(mouse_input, 5)
             else:
-                self.angle =self.curr_angle + mouse_input
+                self.angle = self.curr_angle + mouse_input
 
             self.str_angle = "%.2f" %self.angle
 
@@ -414,19 +415,21 @@ class MB_OT_ALIGN_FACE(Operator):
 
 
         # angle arc
-        axis_z = self.normal
-        axis_x = Vector(self.rot_edge[0].co - self.rot_edge[1].co)
-        axis_x = fix_rot_dir(self.selected_verts, axis_x, self.rot_edge, self.normal)
-        axis_y = self.normal.cross(axis_x)
+        # TODO : fix rotation axis properly first, this relies on it working
 
-        axis_x.normalize()
-        axis_y.normalize()
-        axis_z.normalize()
+        # axis_z = self.normal
+        # axis_x = Vector(self.rot_edge[0].co - self.rot_edge[1].co)
+        # axis_x = fix_rot_dir(self.selected_verts, axis_x, self.rot_edge, self.normal)
+        # axis_y = self.normal.cross(axis_x)
 
-        center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
-        center = coor_loc_to_world(center, self.obj)
+        # axis_x.normalize()
+        # axis_y.normalize()
+        # axis_z.normalize()
 
-        arc(center, axis_x, axis_y, axis_z, 1, self.angle, 2, self.c_selected_geo)
+        # center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
+        # center = coor_loc_to_world(center, self.obj)
+
+        # arc(center, axis_x, axis_y, axis_z, 1, self.angle, 2, self.c_selected_geo)
 
 
 
@@ -489,8 +492,8 @@ class MB_OT_ALIGN_FACE(Operator):
         tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]+0, string="Align Face", size=18)
         tool_header.draw()
 
-        # if self.modify == Modify.Angle.value:
-        #     line_2d(self.start_loc, Vector((self.mouse_loc[0], self.start_loc[1])), 2, self.c_preview_geo)
+        if self.modify == Modify.Angle.value:
+            line_2d(self.start_loc, Vector((self.mouse_loc[0], self.start_loc[1])), 2, self.c_selected_geo_sec)
 
 
     # ------------------------------
