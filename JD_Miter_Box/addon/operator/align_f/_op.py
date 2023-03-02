@@ -71,9 +71,9 @@ class MB_OT_ALIGN_FACE(Operator):
 
     @classmethod
     def poll(cls, context):
-        if context.active_object.mode == 'EDIT' and len(context.selected_objects) == 1:
-
-            return True
+        if context.active_object:
+            if context.active_object.mode == 'EDIT' and len(context.selected_objects) == 1:
+                return True
 
     def invoke(self, context, event):
 
