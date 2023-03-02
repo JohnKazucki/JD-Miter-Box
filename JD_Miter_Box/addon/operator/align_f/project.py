@@ -17,6 +17,8 @@ def project_verts(verts, angle, pivot, rot_axis, normal, directions=[]):
         # in slide mode, each vert has its own projection direction
         if directions:
             dir = directions[index]
+            if abs(dir.dot(normal)) < 0.01:
+                dir = normal
         else:
             dir = normal
 
