@@ -65,7 +65,7 @@ Align_Face_kb_modify = {
 class MB_OT_ALIGN_FACE(Operator):
     bl_idname = "object.mb_align_face"
     bl_label = "Align Face"
-    bl_description = "Aligns Selected Face to Active Face"
+    bl_description = "Aligns Selected Faces by rotating, projecting or sliding"
     bl_options = {'REGISTER','UNDO'}
 
     @classmethod
@@ -79,6 +79,10 @@ class MB_OT_ALIGN_FACE(Operator):
         self.obj=context.active_object
         self.objdata = self.obj.data
         self.bm=bmesh.from_edit_mesh(self.obj.data)
+
+        if self.bm.select_mode != {'FACE'}:
+            self.report({'ERROR'}, "Only works in Face selection mode!")
+            return {'CANCELLED'}
 
         self.setup(event)
 
