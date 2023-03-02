@@ -1,5 +1,3 @@
-
-from json import tool
 import bpy
 import bmesh
 
@@ -19,6 +17,7 @@ from .slide import get_slide_directions
 
 from .axis import update_axis
 
+from ...utility.math import round_to_integer
 
 from ...utility.addon import get_prefs
 
@@ -61,6 +60,14 @@ Align_Face_kb_modify = {
                         'orient_dir' :
                             {'key':'B', 'desc':"Orientation", 'state':4},
 }
+
+Align_Face_kb_snapping = {
+                        'snapping' :
+                            {'key':'Ctrl', 'desc':"Snapping", 'var':'snapping'},
+                        # 'absolute' :
+                        #     {'key':'Alt', 'desc':"Absolute", 'var':'snap_abs'},
+}
+
 
 
 class MB_OT_ALIGN_FACE(Operator):
@@ -122,8 +129,8 @@ class MB_OT_ALIGN_FACE(Operator):
             self.active_face = self.sel_faces[0]
         self.normal = self.active_face.normal 
 
-        self.input_angle = 0.0
         self.angle = 0.0
+        self.curr_angle = self.angle
 
         self.slide_dirs = []
 
@@ -155,7 +162,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.mouse_loc = Vector((0,0))
 
+        self.angle_sens = 5
+
         self.snapping = False
+        # self.snap_abs = True
 
     
     def setup_UI(self):
@@ -200,9 +210,10 @@ class MB_OT_ALIGN_FACE(Operator):
         # Snapping
         if event.type in ('LEFT_CTRL', 'RIGHT_CTRL'):
             if event.value == 'PRESS':
-                self.snapping = True
-            elif event.value == 'RELEASE':
-                self.snapping = False
+                if self.snapping:
+                    self.snapping = False
+                else:
+                    self.snapping = True
 
         # Cycle modes
         if event.type == Align_Face_kb_general['mode']['key'] and event.value == 'PRESS':
@@ -225,6 +236,9 @@ class MB_OT_ALIGN_FACE(Operator):
             self.dist = 0
             if self.modify != Modify.Angle.value:
                 self.modify = Modify.Angle.value
+
+                self.start_loc = Vector((event.mouse_region_x, event.mouse_region_y))
+                self.curr_angle = self.angle
             else:
                 self.modify = Modify.Mod_None.value
 
@@ -273,14 +287,18 @@ class MB_OT_ALIGN_FACE(Operator):
                 self.normal = face_normal
 
         if self.modify == Modify.Angle.value:
-            self.input_angle += self.dist/5
-            self.angle = self.input_angle
 
-            # if snapping enabled
+            mouse_input = (self.mouse_loc - self.start_loc)[0]/self.angle_sens
+
+            # TODO : relative snapping
+            # if self.snap_abs and self.snapping:
+            #     self.angle = round_to_integer(self.curr_angle, 5) + round_to_integer(mouse_input, 5)
+            # elif self.snapping
+
             if self.snapping:
-                self.angle /= 5
-                self.angle = round(self.angle)
-                self.angle *= 5
+                self.angle = self.curr_angle + round_to_integer(mouse_input, 5)
+            else:
+                self.angle =self.curr_angle + mouse_input
 
             self.str_angle = "%.2f" %self.angle
 
@@ -407,6 +425,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
     def draw_shaders_2d(self, context):
 
+        # TODO : generalize variable drawing into functions
+
         texts = []
 
         kb_string = "({key}) {desc}"
@@ -435,7 +455,16 @@ class MB_OT_ALIGN_FACE(Operator):
 
         texts.append("")
 
-        texts.append("Hold Ctrl for snapping")
+        # snapping
+        for _, keys in Align_Face_kb_snapping.items():
+            status = ""
+            if keys.get('var'):
+                if getattr(self, keys['var']):
+                    state = "Enabled"
+                else:
+                    state = "Disabled"
+                status = kb_value.format(var=state)
+            texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
 
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]-15, strings=texts, size=15)
         textbox.draw()

@@ -12,6 +12,12 @@ def sign(n):
     elif n>0: return 1
     else: return None
 
+def round_to_integer(number, stepsize=5):
+    number /= stepsize
+    number = round(number)
+    number *= stepsize
+
+    return number
 
 
 # based on https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
