@@ -11,7 +11,7 @@ import traceback
 from enum import Enum
 
 from ..utility.addon import get_prefs
-from ..utility.draw.core import JDraw_Text_Box_Multi
+from ..utility.draw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 from mathutils import Vector
 from mathutils.geometry import intersect_line_line
@@ -557,5 +557,8 @@ class MB_OT_ALIGN(Operator):
                 status = kb_status.format(var=getattr(self, keys['var']))
             texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
 
-        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]-15, strings=texts, size=15)
         textbox.draw()
+
+        tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]+0, string="Align Edge", size=18)
+        tool_header.draw()

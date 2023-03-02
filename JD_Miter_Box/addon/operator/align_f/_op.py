@@ -437,10 +437,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
         texts.append("Hold Ctrl for snapping")
 
-        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]-15, strings=texts, size=15)
         textbox.draw()
 
-        tool_header = JDraw_Text(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]+5, string="Align Face", size=18)
+        tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]+0, string="Align Face", size=18)
         tool_header.draw()
 
 
