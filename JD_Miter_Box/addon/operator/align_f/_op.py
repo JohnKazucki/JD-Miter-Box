@@ -12,7 +12,7 @@ from mathutils import Vector
 from enum import Enum
 import traceback
 
-from .rotate import rotate_verts, fix_rot_dir
+from .rotate import rotate_normals, rotate_verts, fix_rot_dir
 from .project import project_verts
 from .slide import get_slide_directions
 
@@ -21,7 +21,7 @@ from .axis import update_axis
 
 from ...utility.addon import get_prefs
 
-from ...utility.bmesh import get_selected_edge_verts, get_selected_verts, get_selected_edges
+from ...utility.bmesh import get_selected_edge_verts, get_selected_vert_normals, get_selected_verts, get_selected_edges
 from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
 
 
@@ -94,7 +94,10 @@ class MB_OT_ALIGN_FACE(Operator):
     def setup(self, event):
 
         self.selected_edges = get_selected_edges(self.bm)
+
         self.selected_verts = get_selected_verts(self.bm)
+        self.selected_vert_normals = get_selected_vert_normals(self.bm)
+
         self.selected_edge_verts = get_selected_edge_verts(self.bm)
 
         self.new_point_coors = [v.co for v in self.selected_verts]
@@ -175,7 +178,11 @@ class MB_OT_ALIGN_FACE(Operator):
 
             for index, vert in enumerate(self.selected_verts):
                 vert.co = self.new_point_coors[index]
-            
+
+            for index, vert in enumerate(self.selected_verts):
+                vert.normal = self.selected_vert_normals[index]
+            self.bm.normal_update()
+
             bmesh.update_edit_mesh(self.objdata)
 
             return {'FINISHED'}
@@ -238,15 +245,20 @@ class MB_OT_ALIGN_FACE(Operator):
         if self.mode == Modes.Rotate.name:
             self.new_point_coors = rotate_verts(self.selected_verts, self.angle, self.rot_axis, self.rot_edge)
             self.new_edge_verts_coors = rotate_verts(self.selected_edge_verts, self.angle, self.rot_axis, self.rot_edge)
+
         if self.mode == Modes.Project.name:
             self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
             self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
+
         if self.mode == Modes.Slide.name:
             self.slide_dirs = get_slide_directions(self.selected_verts, self.normal)
             self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.slide_dirs)
-            
+
             self.edge_slide_dirs = get_slide_directions(self.selected_edge_verts, self.normal)
-            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.edge_slide_dirs)        
+            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.edge_slide_dirs)    
+
+        # update normals
+        self.selected_vert_normals = rotate_normals(self.selected_vert_normals, self.angle, self.rot_axis)    
 
 
     def update_input(self, context):

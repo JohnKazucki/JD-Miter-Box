@@ -11,6 +11,15 @@ def get_selected_verts(bm):
 
     return selected_verts
 
+def get_selected_vert_normals(bm):
+    selected_verts = []
+
+    for v in bm.verts:
+        if v.select:
+            selected_verts.append(v.normal)
+
+    return selected_verts
+
 def get_selected_edges(bm):
     selected_edges = []
 

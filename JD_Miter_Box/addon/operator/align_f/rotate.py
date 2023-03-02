@@ -21,6 +21,19 @@ def rotate_verts(verts, angle, rot_axis, rot_edge):
 
     return new_point_coors
 
+def rotate_normals(normals, angle, rot_axis):
+    
+    new_normals = []
+
+    for normal in normals:
+
+        old_normal = normal.copy()
+        new_normal = rotate_point_around_axis(rot_axis, old_normal, angle)
+
+        new_normals.append(new_normal)
+
+    return new_normals
+
 
 def fix_rot_dir(verts, rot_axis, rot_edge, normal):
     for vert in verts:
