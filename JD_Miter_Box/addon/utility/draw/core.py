@@ -73,11 +73,16 @@ class JDraw_Text(JDraw_UI):
         blf.size(self.font, self.fontsize, int(self.dpi))
         blf.color(self.font, *self.color)
         blf.position(self.font, self.x, self.y, 0)
-        # blf.enable(0, blf.SHADOW)
-        # color = (0, 1, 0, 1)
-        # blf.shadow(0, 3, *color)
+
+        # font shadow enable + settings
+        blf.enable(0, blf.SHADOW)
+        color = (0, 0, 0, 1)
+        blf.shadow(0, 3, *color)
+
         blf.draw(self.font, self.string)
-        # blf.disable(0, blf.SHADOW)
+
+        # font shadow disable
+        blf.disable(0, blf.SHADOW)
 
 
     # from ST3 course part 5-8
