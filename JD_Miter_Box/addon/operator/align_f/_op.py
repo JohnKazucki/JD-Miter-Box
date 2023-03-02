@@ -27,7 +27,7 @@ from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
 
 from ...utility.interaction import face_normal_cursor
 
-from ...utility.shaders.primitives import edges, plane_center, line, points
+from ...utility.shaders.primitives import edges, plane_center, line, points, line_2d, arc
 from ...utility.draw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 
@@ -161,6 +161,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.modify = Modify.Mod_None.value
 
         self.mouse_loc = Vector((0,0))
+        self.start_loc = self.mouse_loc
 
         self.angle_sens = 5
 
@@ -361,7 +362,7 @@ class MB_OT_ALIGN_FACE(Operator):
             size = max([size_x, size_y])/2
 
             plane_center(center, axis_x, axis_y, axis_z, size, size, self.c_selected_geo_sec)
-            line(center, axis_x, axis_y, axis_z, size, 2, self.c_selected_geo_sec)
+            line(center, axis_x, axis_y, axis_z, size/2, 2, self.c_selected_geo)
         # --------------------------------------------------
 
         # slide direction edges
@@ -410,6 +411,22 @@ class MB_OT_ALIGN_FACE(Operator):
         coors = self.new_edge_verts_coors
         world_coors = coors_loc_to_world(coors, self.obj)
         edges(world_coors, 1, self.c_preview_geo)
+
+
+        # angle arc
+        axis_z = self.normal
+        axis_x = Vector(self.rot_edge[0].co - self.rot_edge[1].co)
+        axis_x = fix_rot_dir(self.selected_verts, axis_x, self.rot_edge, self.normal)
+        axis_y = self.normal.cross(axis_x)
+
+        axis_x.normalize()
+        axis_y.normalize()
+        axis_z.normalize()
+
+        center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
+        center = coor_loc_to_world(center, self.obj)
+
+        arc(center, axis_x, axis_y, axis_z, 1, self.angle, 2, self.c_selected_geo)
 
 
 
@@ -471,6 +488,9 @@ class MB_OT_ALIGN_FACE(Operator):
 
         tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]+0, string="Align Face", size=18)
         tool_header.draw()
+
+        # if self.modify == Modify.Angle.value:
+        #     line_2d(self.start_loc, Vector((self.mouse_loc[0], self.start_loc[1])), 2, self.c_preview_geo)
 
 
     # ------------------------------
