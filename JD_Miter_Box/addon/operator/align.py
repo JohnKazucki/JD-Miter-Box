@@ -173,6 +173,8 @@ class MB_OT_ALIGN(Operator):
                 bmesh.update_edit_mesh(self.objdata)
                 return {'FINISHED'}
 
+            self.bm.normal_update()
+
             self.closest_active_vert.co = self.new_vert_loc
             bmesh.update_edit_mesh(self.objdata)
 
