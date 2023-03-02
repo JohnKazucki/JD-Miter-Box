@@ -1,4 +1,5 @@
 
+from json import tool
 import bpy
 import bmesh
 
@@ -28,7 +29,7 @@ from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
 from ...utility.interaction import face_normal_cursor
 
 from ...utility.shaders.primitives import edges, plane_center, line, points
-from ...utility.draw.core import JDraw_Text_Box_Multi
+from ...utility.draw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 
 
@@ -438,5 +439,9 @@ class MB_OT_ALIGN_FACE(Operator):
 
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
         textbox.draw()
+
+        tool_header = JDraw_Text(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]+5, string="Align Face", size=18)
+        tool_header.draw()
+
 
     # ------------------------------
