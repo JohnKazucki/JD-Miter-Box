@@ -21,7 +21,7 @@ def face_normal_cursor(mouse_loc, context):
     result, loc, norm_ws, index, obj, matrix = context.scene.ray_cast(depsgraph, ray_origin, view_vector)
 
     if result:
-        return norm_ws
+        return norm_ws, loc
 
     else:
-        return None
+        return None, None

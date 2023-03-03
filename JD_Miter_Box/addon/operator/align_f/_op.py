@@ -27,7 +27,7 @@ from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
 
 from ...utility.interaction import face_normal_cursor
 
-from ...utility.shaders.primitives import edges, plane_center, line, points, line_2d, arc
+from ...utility.shaders.primitives import edges, plane_center, line, points, line_2d, arc, line_p2p
 from ...utility.draw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 
@@ -168,6 +168,9 @@ class MB_OT_ALIGN_FACE(Operator):
         self.snapping = False
         # self.snap_abs = True
 
+        self.face_normal = None
+        self.loc = None
+
     
     def setup_UI(self):
         self.str_angle = "%.2f" %0
@@ -286,7 +289,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
     def update_input(self, context, event):
         if self.modify == Modify.Projection_Dir.value:
-            face_normal = face_normal_cursor(self.mouse_loc, context)
+            face_normal, _ = face_normal_cursor(self.mouse_loc, context)
             if face_normal:
                 self.normal = face_normal
 
@@ -312,7 +315,12 @@ class MB_OT_ALIGN_FACE(Operator):
             self.rot_axis = fix_rot_dir(self.selected_verts, self.rot_axis, self.rot_edge, self.normal)
 
         if self.modify == Modify.Align_Face.value:
-            face_normal = face_normal_cursor(self.mouse_loc, context)
+            face_normal, loc = face_normal_cursor(self.mouse_loc, context)
+
+            self.loc = loc
+
+            # TODO : if mouse moves after setting normal to an axis, and it hits a face, it will update the face normal to be that
+            # add state switching via XYZ, i.e. face align, X - local axis, X again - global axis, X again - face align
 
             # object relative XYZ
             if event.type == 'X':
@@ -325,6 +333,8 @@ class MB_OT_ALIGN_FACE(Operator):
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
                 self.str_angle = "%.2f" %self.angle
+
+            self.face_normal = face_normal
 
 
     # -- SHADERS
@@ -430,6 +440,15 @@ class MB_OT_ALIGN_FACE(Operator):
         coors = self.new_edge_verts_coors
         world_coors = coors_loc_to_world(coors, self.obj)
         edges(world_coors, 1, self.c_preview_geo)
+
+
+        if self.modify == Modify.Align_Face.value:
+            # trying to align to a face
+            if self.face_normal and self.loc:
+                dir = self.face_normal
+                start = self.loc
+            
+                line_p2p(start, start+dir, 3, self.c_selected_geo_sec)
 
 
         # angle arc

@@ -58,6 +58,22 @@ def line(location, axis_x, axis_y, axis_z, length, thickness, color):
 
         gpu.state.line_width_set(1)
 
+def line_p2p(start, end, thickness, color):
+    
+    # LINES
+    gpu.state.line_width_set(thickness)
+
+    coors = [start, end]
+
+    shader_line = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+    batch_line = batch_for_shader(shader_line, 'LINES', {"pos": coors})
+
+    shader_line.bind()
+    shader_line.uniform_float("color", color)
+    batch_line.draw(shader_line)
+
+    
+
 
 def line_2d(start, end, thickness, color):
         # LINE
