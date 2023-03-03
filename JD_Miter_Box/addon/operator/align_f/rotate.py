@@ -37,18 +37,32 @@ def rotate_normals(normals, angle, rot_axis):
 
 def fix_rot_dir(verts, rot_axis, rot_edge, normal):
     verts = [v for v in verts if v not in rot_edge]
+    best_fit = 1
     for vert in verts:
-        dir = vert.co - rot_edge[0].co
+
+        # project vertex coordinate onto orientation plane
+        # without projecting, vertices in front of or behind the rotation axis (along the normal) would still be valid
+        # but these vertices are not good indicators for the rotation axis
+        # (projected) vertices in line with the rotation axis are not good indicators of rotation direction
+        offset_dir = vert.co - rot_edge[0].co
+        offset_v = offset_dir.dot(normal) * normal
+        orig_coor = vert.co - offset_v
+
+        dir = orig_coor - rot_edge[0].co
+
         dir.normalize()
         rot_axis = rot_axis.normalized()
 
-        if abs(dir.dot(rot_axis)) < 1:
-            orig_vert = vert
-            break
+        # TODO : will still fail for when the face being rotated is very thin in the direction perpendicular to the normal and rotation edge
+        # could be improved by considering both verts and edge centers
 
-    new_coor = rotate_verts([orig_vert], 10, rot_axis, rot_edge)[0]
+        if abs(dir.dot(rot_axis)) < best_fit:
+            best_fit = abs(dir.dot(rot_axis))
+            orig_vert_co = orig_coor
 
-    v_diff = new_coor - orig_vert.co
+    new_coor = rotate_point_around_axis(rot_axis, orig_vert_co, 20)
+
+    v_diff = new_coor - orig_coor
     if v_diff.dot(normal) < 0:        
         rot_axis *= -1
 
