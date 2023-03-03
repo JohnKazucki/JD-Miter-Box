@@ -297,8 +297,9 @@ class MB_OT_ALIGN_FACE(Operator):
             #     self.angle = round_to_integer(self.curr_angle, 5) + round_to_integer(mouse_input, 5)
             # elif self.snapping
 
+            # absolute snapping
             if self.snapping:
-                self.angle = self.curr_angle + round_to_integer(mouse_input, 5)
+                self.angle = round_to_integer(self.curr_angle + mouse_input, 5)
             else:
                 self.angle = self.curr_angle + mouse_input
 
