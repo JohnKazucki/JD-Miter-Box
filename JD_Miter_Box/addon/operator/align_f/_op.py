@@ -17,7 +17,7 @@ from .slide import get_slide_directions
 
 from .axis import update_axis
 
-from ...utility.math import round_to_integer
+from ...utility.math import angle_between_faces, round_to_integer, clamp
 
 from ...utility.addon import get_prefs
 
@@ -252,9 +252,16 @@ class MB_OT_ALIGN_FACE(Operator):
             else:
                 self.modify = Modify.Mod_None.value
 
+        # Any mode - align to face
+        if event.type == Align_Face_kb_modify['align_to_face']['key'] and event.value == 'PRESS':
+            self.dist = 0
+            if self.modify != Modify.Align_Face.value:
+                self.modify = Modify.Align_Face.value
+            else:
+                self.modify = Modify.Mod_None.value
 
 
-        self.update_input(context)
+        self.update_input(context, event)
         self.update()
 
         context.area.tag_redraw()
@@ -282,7 +289,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.selected_vert_normals = rotate_normals(self.selected_vert_normals, self.angle, self.rot_axis)    
 
 
-    def update_input(self, context):
+    def update_input(self, context, event):
         if self.modify == Modify.Projection_Dir.value:
             face_normal = face_normal_cursor(self.mouse_loc, context)
             if face_normal:
@@ -308,6 +315,21 @@ class MB_OT_ALIGN_FACE(Operator):
         if self.modify == Modify.Axis.value:
             self.rot_edge, self.rot_axis, self.rot_pivot = update_axis(self, context)
             self.rot_axis = fix_rot_dir(self.selected_verts, self.rot_axis, self.rot_edge, self.normal)
+
+        if self.modify == Modify.Align_Face.value:
+            face_normal = face_normal_cursor(self.mouse_loc, context)
+
+            # object relative XYZ
+            if event.type == 'X':
+                face_normal = Vector((1,0,0))
+            if event.type == 'Y':
+                face_normal = Vector((0,1,0))
+            if event.type == 'Z':
+                face_normal = Vector((0,0,1))
+
+            if face_normal:
+                self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
+                self.str_angle = "%.2f" %self.angle
 
 
     # -- SHADERS

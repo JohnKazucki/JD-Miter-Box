@@ -67,3 +67,20 @@ def rotate_to_space(vectors, axis_x, axis_y, axis_z):
         new_vectors.append(vec)
 
     return new_vectors
+
+
+def angle_between_faces(axis, faceA_normal, faceB_normal):
+    dot = faceB_normal.dot(faceA_normal)
+    if dot:
+        # account for floating point inaccuracies
+        dot = clamp(dot, -1, 1)
+        angle = math.degrees(math.acos(dot))
+
+        new_normal = rotate_point_around_axis(axis, faceA_normal, angle)
+
+        if 1- new_normal.dot(faceB_normal) > .0001:
+            angle *= -1
+
+        return angle
+
+    return 0.0
