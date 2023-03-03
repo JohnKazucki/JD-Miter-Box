@@ -206,7 +206,6 @@ class MB_OT_ALIGN_FACE(Operator):
         # Adjust
         if event.type == 'MOUSEMOVE':
             self.mouse_loc = Vector((event.mouse_region_x, event.mouse_region_y))
-            self.dist = event.mouse_x - event.mouse_prev_x
 
         # Snapping
         if event.type in ('LEFT_CTRL', 'RIGHT_CTRL'):
@@ -227,7 +226,6 @@ class MB_OT_ALIGN_FACE(Operator):
         # Projection/Slide mode - orientation normal 
         if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
             if event.type == Align_Face_kb_modify['orient_dir']['key'] and event.value == 'PRESS':
-                self.dist = 0
                 if self.modify != Modify.Projection_Dir.value:
                     self.modify = Modify.Projection_Dir.value
                 else:
@@ -235,7 +233,6 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # Any mode - angle
         if event.type == Align_Face_kb_modify['angle']['key'] and event.value == 'PRESS':
-            self.dist = 0
             if self.modify != Modify.Angle.value:
                 self.modify = Modify.Angle.value
 
@@ -246,7 +243,6 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # Any mode - rotation axis
         if event.type == Align_Face_kb_modify['rot_axis']['key'] and event.value == 'PRESS':
-            self.dist = 0
             if self.modify != Modify.Axis.value:
                 self.modify = Modify.Axis.value
             else:
@@ -254,7 +250,6 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # Any mode - align to face
         if event.type == Align_Face_kb_modify['align_to_face']['key'] and event.value == 'PRESS':
-            self.dist = 0
             if self.modify != Modify.Align_Face.value:
                 self.modify = Modify.Align_Face.value
             else:
