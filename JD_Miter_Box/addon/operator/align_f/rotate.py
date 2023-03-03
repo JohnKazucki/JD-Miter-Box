@@ -36,6 +36,7 @@ def rotate_normals(normals, angle, rot_axis):
 
 
 def fix_rot_dir(verts, rot_axis, rot_edge, normal):
+    verts = [v for v in verts if v not in rot_edge]
     for vert in verts:
         dir = vert.co - rot_edge[0].co
         dir.normalize()
