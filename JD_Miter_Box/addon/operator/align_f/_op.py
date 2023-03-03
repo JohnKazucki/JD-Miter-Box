@@ -6,6 +6,7 @@ from bpy.types import Operator
 import gpu
 from gpu_extras.batch import batch_for_shader
 
+
 from mathutils import Vector
 
 from enum import Enum
@@ -27,9 +28,9 @@ from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
 
 from ...utility.interaction import face_normal_cursor
 
-from ...utility.shaders.primitives import edges, plane_center, line, points, line_2d, arc, line_p2p
-from ...utility.draw.core import JDraw_Text_Box_Multi, JDraw_Text
-
+from ...utility.drawing.primitives import edges, plane_center, line, points, line_2d, arc, line_p2p
+from ...utility.drawing.view import mouse_2d_to_3d
+from ...utility.jdraw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 
 class Modes(Enum):
@@ -150,6 +151,9 @@ class MB_OT_ALIGN_FACE(Operator):
         self.c_active_geo = prefs.color.c_active_geo
 
         self.s_vertex = prefs.size.s_vertex
+
+
+        self.c_face_align_dir = self.c_selected_geo_sec
         
 
     def setup_input(self):
@@ -325,10 +329,13 @@ class MB_OT_ALIGN_FACE(Operator):
             # object relative XYZ
             if event.type == 'X':
                 face_normal = Vector((1,0,0))
+                self.c_face_align_dir = (.7,.15,.15,1)
             if event.type == 'Y':
                 face_normal = Vector((0,1,0))
+                self.c_face_align_dir = (.4,.6,0,1)
             if event.type == 'Z':
                 face_normal = Vector((0,0,1))
+                self.c_face_align_dir = (0,.4,.6,1)
 
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
@@ -443,12 +450,18 @@ class MB_OT_ALIGN_FACE(Operator):
 
 
         if self.modify == Modify.Align_Face.value:
+            start = Vector((0,0,0))
+            dir = Vector((0,0,0))
             # trying to align to a face
             if self.face_normal and self.loc:
                 dir = self.face_normal
                 start = self.loc
+            # trying to align to an axis
+            if self.face_normal and not self.loc:
+                dir = self.face_normal * 0.1
+                start = mouse_2d_to_3d(context, self.mouse_loc)
             
-                line_p2p(start, start+dir, 3, self.c_selected_geo_sec)
+            line_p2p(start, start+dir, 2, self.c_face_align_dir)
 
 
         # angle arc

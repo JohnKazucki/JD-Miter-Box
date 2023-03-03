@@ -11,7 +11,7 @@ import traceback
 from enum import Enum
 
 from ..utility.addon import get_prefs
-from ..utility.draw.core import JDraw_Text_Box_Multi, JDraw_Text
+from ..utility.jdraw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 from mathutils import Vector
 from mathutils.geometry import intersect_line_line
