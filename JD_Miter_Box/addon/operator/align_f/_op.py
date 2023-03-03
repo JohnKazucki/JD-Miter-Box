@@ -332,7 +332,7 @@ class MB_OT_ALIGN_FACE(Operator):
                 self.c_face_align_dir = (.7,.15,.15,1)
             if event.type == 'Y':
                 face_normal = Vector((0,1,0))
-                self.c_face_align_dir = (.4,.6,0,1)
+                self.c_face_align_dir = (.3,.7,0,1)
             if event.type == 'Z':
                 face_normal = Vector((0,0,1))
                 self.c_face_align_dir = (0,.4,.6,1)
