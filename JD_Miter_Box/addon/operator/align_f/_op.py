@@ -283,13 +283,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # Any mode - align to face sub modes
         if self.modify == Modify.Align_Face.value:
-            if event.type == 'X' and event.value == 'PRESS':
-                if self.align_mode not in (AlignModes.X_Object.name,AlignModes.X_World.name):
-                    self.align_mode = AlignModes.X_Object.name
-                elif self.align_mode == AlignModes.X_Object.name:
-                    self.align_mode = AlignModes.X_World.name
-                else:
-                    self.align_mode = AlignModes.Face.name
+            self.update_Face_Align_Axis(event)
 
 
         self.update_input(context)
@@ -298,6 +292,24 @@ class MB_OT_ALIGN_FACE(Operator):
         context.area.tag_redraw()
 
         return {"RUNNING_MODAL"}
+
+
+    def update_Face_Align_Axis(self, event):
+
+        axis_modes = {
+            'X' : (AlignModes.X_Object.name,AlignModes.X_World.name),
+            'Y' : (AlignModes.Y_Object.name,AlignModes.Y_World.name),
+            'Z' : (AlignModes.Z_Object.name,AlignModes.Z_World.name),
+        }
+
+        if axis_modes.get(event.type) and event.value == 'PRESS':
+            modes = axis_modes[event.type]
+            if self.align_mode not in modes:
+                self.align_mode = modes[0]
+            elif self.align_mode == modes[0]:
+                self.align_mode = modes[1]
+            else:
+                self.align_mode = AlignModes.Face.name
 
 
     def update(self):
@@ -355,32 +367,47 @@ class MB_OT_ALIGN_FACE(Operator):
 
             self.c_face_align_dir = self.c_selected_geo_sec
 
-            # TODO : if mouse moves after setting normal to an axis, and it hits a face, it will update the face normal to be that
-            # add state switching via XYZ, i.e. face align, X - local axis, X again - global axis, X again - face align
-
-            # object relative XYZ
-            # if event.type == 'X':
-            #     face_normal = Vector((1,0,0))
-            #     self.c_face_align_dir = (.7,.15,.15,1)
-            # if event.type == 'Y':
-            #     face_normal = Vector((0,1,0))
-            #     self.c_face_align_dir = (.3,.7,0,1)
-            # if event.type == 'Z':
-            #     face_normal = Vector((0,0,1))
-            #     self.c_face_align_dir = (0,.4,.6,1)
-
-            if self.align_mode == AlignModes.X_Object.name:
-                face_normal = Vector((1,0,0))
-                self.c_face_align_dir = (*B_ui.axis_x, .3)
-            if self.align_mode == AlignModes.X_World.name:
-                face_normal = coor_world_to_loc(Vector((1,0,0)), self.obj)
-                self.c_face_align_dir = (*B_ui.axis_x, .3)
+            # if aligning to object/world axis            
+            axis_normal = self.update_input_Face_Align_Axis()
+            if axis_normal:
+                face_normal = axis_normal
 
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
                 self.str_angle = "%.2f" %self.angle
 
             self.face_normal = face_normal
+
+
+    def update_input_Face_Align_Axis(self):
+
+        face_normal = None
+        
+        x_data = (Vector((1,0,0)), B_ui.axis_x)
+        y_data = (Vector((0,1,0)), B_ui.axis_y)
+        z_data = (Vector((0,0,1)), B_ui.axis_z)
+
+        axis_options = {
+            AlignModes.X_Object.name: x_data,
+            AlignModes.X_World.name: x_data,
+            AlignModes.Y_Object.name: y_data,
+            AlignModes.Y_World.name: y_data,
+            AlignModes.Z_Object.name: z_data,
+            AlignModes.Z_World.name: z_data
+        }
+
+        if self.align_mode in axis_options:
+            data = axis_options[self.align_mode]
+            face_normal = data[0]
+            self.c_face_align_dir = (*data[1], .3)
+
+            if "World" in self.align_mode:
+                face_normal = coor_world_to_loc(data[0], self.obj)
+
+
+        return face_normal
+
+        
 
 
     # -- SHADERS
