@@ -230,16 +230,13 @@ class MB_OT_ALIGN_FACE(Operator):
 
             self.remove_shaders(context)
 
-            # for index, vert in enumerate(self.selected_verts):
-            #     vert.co = self.new_point_coors[index]
-
             for index, coor in self.new_point_coors:
                 self.bm.verts[index].co = coor
 
-            # TODO : convert rotate normals function to new list of tuples format
-            # for index, vert in enumerate(self.selected_verts):
-            #     vert.normal = self.selected_vert_normals[index]
-            # self.bm.normal_update()
+            # TODO : convert rotate normals function to new list of tuples format ?
+            for index, vert in enumerate(self.selected_verts):
+                vert.normal = self.selected_vert_normals[index]
+            self.bm.normal_update()
 
             bmesh.update_edit_mesh(self.objdata)
 
