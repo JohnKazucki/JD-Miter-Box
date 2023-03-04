@@ -62,6 +62,15 @@ Align_Face_kb_modify = {
                             {'key':'B', 'desc':"Orientation", 'state':4},
 }
 
+class AlignModes(Enum):
+    Face = 0
+    X_Object = 1
+    X_World = 2
+    Y_Object = 3
+    Y_World = 4
+    Z_Object = 5
+    Z_World = 6
+
 Align_Face_kb_snapping = {
                         'snapping' :
                             {'key':'Ctrl', 'desc':"Snapping", 'var':'snapping'},
@@ -167,6 +176,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.modify = Modify.Mod_None.value
 
+        self.align_mode = AlignModes.Face.name
+
         self.mouse_loc = Vector((0,0))
         self.start_loc = self.mouse_loc
 
@@ -265,6 +276,21 @@ class MB_OT_ALIGN_FACE(Operator):
             else:
                 self.modify = Modify.Mod_None.value
 
+        # Any mode - align to face sub modes
+        if self.modify == Modify.Align_Face.value:
+            if event.type == 'X' and event.value == 'PRESS':
+                # if self.align_mode not in (AlignModes.X_Object.name,AlignModes.X_World.name):
+                #     self.align_mode = AlignModes.X_Object.name
+                # elif self.align_mode == AlignModes.X_Object.name:
+                #     self.align_mode = AlignModes.X_World.name
+                # else:
+                #     self.align_mode = AlignModes.Face.name
+                if self.align_mode != AlignModes.X_Object.name:
+                    self.align_mode = AlignModes.X_Object.name
+                else:
+                    self.align_mode = AlignModes.Face.name
+
+                print(self.align_mode)
 
         self.update_input(context, event)
         self.update()
@@ -323,22 +349,30 @@ class MB_OT_ALIGN_FACE(Operator):
 
         if self.modify == Modify.Align_Face.value:
             face_normal, loc = face_normal_cursor(self.mouse_loc, context)
-
             self.loc = loc
+
+            self.c_face_align_dir = self.c_selected_geo_sec
 
             # TODO : if mouse moves after setting normal to an axis, and it hits a face, it will update the face normal to be that
             # add state switching via XYZ, i.e. face align, X - local axis, X again - global axis, X again - face align
 
             # object relative XYZ
-            if event.type == 'X':
+            # if event.type == 'X':
+            #     face_normal = Vector((1,0,0))
+            #     self.c_face_align_dir = (.7,.15,.15,1)
+            # if event.type == 'Y':
+            #     face_normal = Vector((0,1,0))
+            #     self.c_face_align_dir = (.3,.7,0,1)
+            # if event.type == 'Z':
+            #     face_normal = Vector((0,0,1))
+            #     self.c_face_align_dir = (0,.4,.6,1)
+
+            if self.align_mode == AlignModes.X_Object.name:
                 face_normal = Vector((1,0,0))
                 self.c_face_align_dir = (.7,.15,.15,1)
-            if event.type == 'Y':
-                face_normal = Vector((0,1,0))
-                self.c_face_align_dir = (.3,.7,0,1)
-            if event.type == 'Z':
-                face_normal = Vector((0,0,1))
-                self.c_face_align_dir = (0,.4,.6,1)
+            # if self.align_mode == AlignModes.X_World.name:
+            #     face_normal = coor_loc_to_world(Vector((1,0,0)), self.obj)
+            #     self.c_face_align_dir = (.7,.15,.15,1)
 
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
