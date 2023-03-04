@@ -125,9 +125,14 @@ def arc(center, axis_x, axis_y, axis_z, radius, angle, thickness, color):
 
         world_coors = []
 
-        angle_div = angle/9
+        # every 5 degrees, we need angle/5 points
+        angle_pts = abs(int(angle/5))
+        if angle_pts != 0:
+            angle_div = angle/angle_pts
+        else:
+            angle_div = 0
 
-        for i in range(9):
+        for i in range(int(angle_pts)+1):
             point = rotate_point_around_axis(Vector((1,0,0)), Vector((0, radius, 0)), angle_div*i)
             world_coors.append(point)
 
@@ -144,3 +149,8 @@ def arc(center, axis_x, axis_y, axis_z, radius, angle, thickness, color):
         batch_arc.draw(shader_arc)
 
         gpu.state.line_width_set(1)    
+
+        # POINTS
+        if world_coors:
+            point_coors = [world_coors[0], world_coors[-1]]
+            points(point_coors, thickness*3, color)

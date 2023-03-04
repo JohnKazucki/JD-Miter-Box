@@ -552,19 +552,19 @@ class MB_OT_ALIGN_FACE(Operator):
         # angle arc
         # TODO : fix rotation axis properly first, this relies on it working
 
-        # axis_z = self.normal
-        # axis_x = Vector(self.rot_edge[0].co - self.rot_edge[1].co)
-        # axis_x = fix_rot_dir(self.selected_verts, axis_x, self.rot_edge, self.normal)
-        # axis_y = self.normal.cross(axis_x)
+        axis_z = self.normal
+        axis_x = Vector(self.rot_edge[0].co - self.rot_edge[1].co)
+        axis_x = fix_rot_dir(self.selected_verts, axis_x, self.rot_edge, self.normal)
+        axis_y = self.normal.cross(axis_x)
 
-        # axis_x.normalize()
-        # axis_y.normalize()
-        # axis_z.normalize()
+        axis_x.normalize()
+        axis_y.normalize()
+        axis_z.normalize()
 
-        # center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
-        # center = coor_loc_to_world(center, self.obj)
+        center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
+        center = coor_loc_to_world(center, self.obj)
 
-        # arc(center, axis_x, axis_y, axis_z, 1, self.angle, 2, self.c_selected_geo)
+        arc(center, axis_x, axis_y, axis_z, 1, self.angle, 2, self.c_selected_geo)
 
 
 
