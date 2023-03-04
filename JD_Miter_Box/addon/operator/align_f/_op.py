@@ -373,8 +373,8 @@ class MB_OT_ALIGN_FACE(Operator):
         # projection/slide orientation direction
         if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
             axis_z = self.normal
-            axis_x = self.normal.cross(Vector((0,0,1)))
-            axis_y = self.normal.cross(axis_x)
+            axis_x = self.rot_axis
+            axis_y = axis_z.cross(axis_x)
 
             axis_x.normalize()
             axis_y.normalize()
