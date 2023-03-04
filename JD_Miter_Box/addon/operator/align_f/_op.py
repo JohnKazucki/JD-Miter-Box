@@ -23,7 +23,7 @@ from ...utility.math import angle_between_faces, round_to_integer, clamp
 from ...utility.addon import get_prefs
 
 from ...utility.bmesh import get_selected_edge_verts, get_selected_vert_normals, get_selected_verts, get_selected_edges
-from ...utility.mesh import coors_loc_to_world, coor_loc_to_world
+from ...utility.mesh import coors_loc_to_world, coor_loc_to_world, coor_world_to_loc
 
 
 from ...utility.interaction import face_normal_cursor
@@ -279,20 +279,15 @@ class MB_OT_ALIGN_FACE(Operator):
         # Any mode - align to face sub modes
         if self.modify == Modify.Align_Face.value:
             if event.type == 'X' and event.value == 'PRESS':
-                # if self.align_mode not in (AlignModes.X_Object.name,AlignModes.X_World.name):
-                #     self.align_mode = AlignModes.X_Object.name
-                # elif self.align_mode == AlignModes.X_Object.name:
-                #     self.align_mode = AlignModes.X_World.name
-                # else:
-                #     self.align_mode = AlignModes.Face.name
-                if self.align_mode != AlignModes.X_Object.name:
+                if self.align_mode not in (AlignModes.X_Object.name,AlignModes.X_World.name):
                     self.align_mode = AlignModes.X_Object.name
+                elif self.align_mode == AlignModes.X_Object.name:
+                    self.align_mode = AlignModes.X_World.name
                 else:
                     self.align_mode = AlignModes.Face.name
 
-                print(self.align_mode)
 
-        self.update_input(context, event)
+        self.update_input(context)
         self.update()
 
         context.area.tag_redraw()
@@ -320,11 +315,11 @@ class MB_OT_ALIGN_FACE(Operator):
         self.selected_vert_normals = rotate_normals(self.selected_vert_normals, self.angle, self.rot_axis)    
 
 
-    def update_input(self, context, event):
+    def update_input(self, context):
         if self.modify == Modify.Projection_Dir.value:
             face_normal, _ = face_normal_cursor(self.mouse_loc, context)
             if face_normal:
-                self.normal = face_normal
+                self.normal = coor_world_to_loc(face_normal, self.obj)
 
         if self.modify == Modify.Angle.value:
 
@@ -349,6 +344,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
         if self.modify == Modify.Align_Face.value:
             face_normal, loc = face_normal_cursor(self.mouse_loc, context)
+            if face_normal:
+                face_normal = coor_world_to_loc(face_normal, self.obj)
             self.loc = loc
 
             self.c_face_align_dir = self.c_selected_geo_sec
@@ -370,9 +367,9 @@ class MB_OT_ALIGN_FACE(Operator):
             if self.align_mode == AlignModes.X_Object.name:
                 face_normal = Vector((1,0,0))
                 self.c_face_align_dir = (.7,.15,.15,1)
-            # if self.align_mode == AlignModes.X_World.name:
-            #     face_normal = coor_loc_to_world(Vector((1,0,0)), self.obj)
-            #     self.c_face_align_dir = (.7,.15,.15,1)
+            if self.align_mode == AlignModes.X_World.name:
+                face_normal = coor_world_to_loc(Vector((1,0,0)), self.obj)
+                self.c_face_align_dir = (.7,.15,.15,1)
 
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
@@ -409,8 +406,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # projection/slide orientation direction
         if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
-            axis_z = self.normal
-            axis_x = self.rot_axis
+            axis_z = coor_loc_to_world(self.normal, self.obj)
+            axis_x = coor_loc_to_world(self.rot_axis, self.obj)
             axis_y = axis_z.cross(axis_x)
 
             axis_x.normalize()
@@ -486,16 +483,18 @@ class MB_OT_ALIGN_FACE(Operator):
         edges(world_coors, 1, self.c_preview_geo)
 
 
+        # face normal or axis aligned normal
+
         if self.modify == Modify.Align_Face.value:
             start = Vector((0,0,0))
             dir = Vector((0,0,0))
             # trying to align to a face
             if self.face_normal and self.loc:
-                dir = self.face_normal
+                dir = coor_loc_to_world(self.face_normal, self.obj)
                 start = self.loc
             # trying to align to an axis
             if self.face_normal and not self.loc:
-                dir = self.face_normal * 0.1
+                dir = coor_loc_to_world(self.face_normal, self.obj) * 0.1
                 start = mouse_2d_to_3d(context, self.mouse_loc)
             
             line_p2p(start, start+dir, 2, self.c_face_align_dir)

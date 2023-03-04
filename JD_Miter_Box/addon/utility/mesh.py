@@ -22,3 +22,7 @@ def coor_loc_to_world(coor, obj):
     world_coor = obj.matrix_world @ coor
     return world_coor
 
+def coor_world_to_loc(coor, obj):
+    inverse_world_matrix = obj.matrix_world.inverted_safe()
+    world_coor = inverse_world_matrix @ coor
+    return world_coor
