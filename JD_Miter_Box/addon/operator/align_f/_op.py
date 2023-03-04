@@ -139,6 +139,9 @@ class MB_OT_ALIGN_FACE(Operator):
         self.setup_input()
         self.setup_UI()
 
+        # fix rotation direction on setup, in case rotation axis is never adjusted
+        self.rot_axis = fix_rot_dir(self.selected_verts, self.rot_axis, self.rot_edge, self.normal)
+
 
     def setup_colors(self):
         prefs = get_prefs()
