@@ -277,6 +277,7 @@ class MB_OT_ALIGN_FACE(Operator):
         if event.type == Align_Face_kb_modify['align_to_face']['key'] and event.value == 'PRESS':
             if self.modify != Modify.Align_Face.value:
                 self.modify = Modify.Align_Face.value
+                self.align_mode = AlignModes.Face.name
             else:
                 self.modify = Modify.Mod_None.value
 
