@@ -61,7 +61,7 @@ Align_Face_kb_modify = {
                         'rot_axis' :
                             {'key':'R', 'desc':"Rotation Axis", 'state':1},
                         'align_to_face' :
-                            {'key':'F', 'desc':"Align to Face", 'state':2},
+                            {'key':'F', 'desc':"Align to", 'var': 'str_align_mode', 'state':2},
                         'orient_dir' :
                             {'key':'B', 'desc':"Orientation", 'state':4},
 }
@@ -181,6 +181,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.modify = Modify.Mod_None.value
 
         self.align_mode = AlignModes.Face.name
+        self.str_align_mode = AlignModes.Face.name
 
         self.mouse_loc = Vector((0,0))
         self.start_loc = self.mouse_loc
@@ -310,6 +311,18 @@ class MB_OT_ALIGN_FACE(Operator):
                 self.align_mode = modes[1]
             else:
                 self.align_mode = AlignModes.Face.name
+
+            self.str_align_mode = self.format_Face_Align_Mode_Text()
+
+    def format_Face_Align_Mode_Text(self):
+        parts = self.align_mode.split("_")
+
+        text = "{type} {axis}"
+
+        if len(parts) == 1:
+            return self.align_mode
+        else:
+            return text.format(type=parts[1], axis=parts[0])
 
 
     def update(self):
