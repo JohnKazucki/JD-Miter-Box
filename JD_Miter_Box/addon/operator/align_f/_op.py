@@ -336,10 +336,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
         if self.mode == Modes.Slide.name:
             self.slide_dirs = get_slide_directions(self.selected_verts, self.normal)
-            self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.slide_dirs)
+            self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.slide_dirs, self.face_normal)
 
             self.edge_slide_dirs = get_slide_directions(self.selected_edge_verts, self.normal)
-            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.edge_slide_dirs)    
+            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.edge_slide_dirs, self.face_normal)    
 
         # update normals
         self.selected_vert_normals = rotate_normals(self.selected_vert_normals, self.angle, self.rot_axis)    
@@ -485,10 +485,15 @@ class MB_OT_ALIGN_FACE(Operator):
 
             self.slide_edges = []
 
-            for index, position in enumerate(self.new_point_coors):
+            # for vert in self.selected_verts:
 
-                self.slide_edges.append(position - (self.slide_dirs[index]*0.1))
-                self.slide_edges.append(position + (self.slide_dirs[index]*0.1))
+            #     self.slide_edges.append(position - (self.slide_dirs[vert.index]*0.1))
+            #     self.slide_edges.append(position + (self.slide_dirs[vert.index]*0.1))
+
+            # for index, position in enumerate(self.new_point_coors):
+
+            #     self.slide_edges.append(position - (self.slide_dirs[index]*0.1))
+            #     self.slide_edges.append(position + (self.slide_dirs[index]*0.1))
             
             # slide edges
 

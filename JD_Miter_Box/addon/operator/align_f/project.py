@@ -7,25 +7,32 @@ from ...utility.math import rotate_point_around_axis
 
 
 
-def project_verts(verts, angle, pivot, rot_axis, normal, directions=[]):
+def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], align_dir=None):
 
     new_point_coors = []
-    old_point_coors = [vert.co for vert in verts]
+    # old_point_coors = [vert.co for vert in verts]
 
-    for index, vert in enumerate(old_point_coors):
+    for vert in verts:
+
+        vert_co = vert.co
 
         # in slide mode, each vert has its own projection direction
         if directions:
-            dir = directions[index]
-            if abs(dir.dot(normal)) < 0.01:
-                dir = normal
+            dir = directions[vert.index]
+            if abs(dir.dot(normal)) > .98:
+                if align_dir:
+                    dir = align_dir
+                else:
+                    dir = normal
+
+        # in projection mode
         else:
             dir = normal
 
-        diff = intersect_line_plane(vert, vert+dir, pivot, normal)
+        diff = intersect_line_plane(vert_co, vert_co+dir, pivot, normal)
         if not diff:
             diff = Vector((0,0,0))
-        v_offset = vert-diff
+        v_offset = vert_co-diff
 
         pivot_offset = v_offset.dot(normal)
         pivot_offset *= normal
@@ -38,7 +45,7 @@ def project_verts(verts, angle, pivot, rot_axis, normal, directions=[]):
             pivot += pivot_offset
             v_offset = Vector((0,0,0))
     
-        new_coor = intersect_line_plane(vert, vert+dir, pivot, plane_normal)
+        new_coor = intersect_line_plane(vert_co, vert_co+dir, pivot, plane_normal)
         if not new_coor:
             new_coor = Vector((0,0,0))
 

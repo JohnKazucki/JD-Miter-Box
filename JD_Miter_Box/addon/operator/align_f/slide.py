@@ -6,9 +6,11 @@ from ...utility.bmesh import get_connected_faces_of_vert, get_connected_verts
 
 def get_slide_directions(verts, normal):
 
-    slide_directions = []
+
+    slide_directions = {}
 
     for vert in verts:
+
         # get the connected vertices that are not part of the selection
         connected_verts = get_connected_verts(vert, exclude_selected=True)
         connected_faces = get_connected_faces_of_vert(vert, exclude_selected=True)
@@ -24,7 +26,8 @@ def get_slide_directions(verts, normal):
         # geo has no unselected slide edges or faces, so must be an internal part of the selection
         else:
             dir_ideal = normal
-            dir = dir_ideal
+            # dir = dir_ideal
+            dir = normal
         
         # means there are slide edges we can use
         if connected_verts:
@@ -41,7 +44,7 @@ def get_slide_directions(verts, normal):
                     dir = dir_option
 
         # append the slide direction to dirs list
-        slide_directions.append(dir)
+        slide_directions[vert.index] = dir
 
     # return list
     return slide_directions
