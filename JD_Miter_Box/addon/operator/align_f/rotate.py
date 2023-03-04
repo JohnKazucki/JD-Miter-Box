@@ -7,17 +7,16 @@ from ...utility.math import rotate_point_around_axis
 def rotate_verts(verts, angle, rot_axis, rot_edge):
 
     new_point_coors = []
-    old_point_coors = [vert.co for vert in verts]
 
-    for old_coor in old_point_coors:
-        old_coor = old_coor.copy()
+    for vert in verts:
+        old_coor = vert.co.copy()
         old_coor -= rot_edge[0].co
 
         new_coor = rotate_point_around_axis(rot_axis, old_coor, angle)
 
         new_coor += rot_edge[0].co
 
-        new_point_coors.append(new_coor)
+        new_point_coors.append((vert.index, new_coor))
 
     return new_point_coors
 
