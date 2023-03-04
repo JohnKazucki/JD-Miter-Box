@@ -7,7 +7,7 @@ from ...utility.math import rotate_point_around_axis
 
 from collections import OrderedDict
 
-def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], align_dir=None):
+def project_verts(verts, angle, pivot, rot_axis, normal, directions=[]):
 
     new_point_coors = []
     # old_point_coors = [vert.co for vert in verts]
@@ -19,11 +19,6 @@ def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], align_di
         # in slide mode, each vert has its own projection direction
         if directions:
             dir = directions[vert.index]
-            if abs(dir.dot(normal)) > .98:
-                if align_dir:
-                    dir = align_dir
-                else:
-                    dir = normal
 
         # in projection mode
         else:

@@ -4,7 +4,7 @@ from ...utility.bmesh import get_connected_faces_of_vert, get_connected_verts
 
 
 
-def get_slide_directions(verts, normal):
+def get_slide_directions(verts, normal, align_dir=None):
 
 
     slide_directions = {}
@@ -28,6 +28,9 @@ def get_slide_directions(verts, normal):
             dir_ideal = normal
             # dir = dir_ideal
             dir = normal
+            if align_dir:
+                dir = align_dir
+
         
         # means there are slide edges we can use
         if connected_verts:

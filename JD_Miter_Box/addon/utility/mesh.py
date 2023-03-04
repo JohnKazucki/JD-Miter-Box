@@ -26,3 +26,20 @@ def coor_world_to_loc(coor, obj):
     inverse_world_matrix = obj.matrix_world.inverted_safe()
     world_coor = inverse_world_matrix @ coor
     return world_coor
+
+
+def normal_loc_to_world(normal, obj):
+    mx_inv = obj.matrix_world.inverted()
+    mx_norm = mx_inv.transposed().to_3x3()
+
+    world_normal = mx_norm @ normal
+
+    return world_normal
+
+def normal_world_to_loc(normal, obj):
+    mx = obj.matrix_world
+    mx_norm = mx.transposed().to_3x3()
+
+    local_normal = mx_norm @ normal
+
+    return local_normal
