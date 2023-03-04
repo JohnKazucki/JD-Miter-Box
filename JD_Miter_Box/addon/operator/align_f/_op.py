@@ -33,6 +33,10 @@ from ...utility.drawing.view import mouse_2d_to_3d
 from ...utility.jdraw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 
+theme = bpy.context.preferences.themes[0]
+B_ui = theme.user_interface
+
+
 class Modes(Enum):
     Rotate = 0
     Project = 1
@@ -366,10 +370,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
             if self.align_mode == AlignModes.X_Object.name:
                 face_normal = Vector((1,0,0))
-                self.c_face_align_dir = (.7,.15,.15,1)
+                self.c_face_align_dir = (*B_ui.axis_x, .3)
             if self.align_mode == AlignModes.X_World.name:
                 face_normal = coor_world_to_loc(Vector((1,0,0)), self.obj)
-                self.c_face_align_dir = (.7,.15,.15,1)
+                self.c_face_align_dir = (*B_ui.axis_x, .3)
 
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
@@ -486,6 +490,8 @@ class MB_OT_ALIGN_FACE(Operator):
         # face normal or axis aligned normal
 
         if self.modify == Modify.Align_Face.value:
+            gpu.state.blend_set('ALPHA')
+
             start = Vector((0,0,0))
             dir = Vector((0,0,0))
             # trying to align to a face
@@ -498,6 +504,8 @@ class MB_OT_ALIGN_FACE(Operator):
                 start = mouse_2d_to_3d(context, self.mouse_loc)
             
             line_p2p(start, start+dir, 2, self.c_face_align_dir)
+
+            gpu.state.blend_set('NONE')
 
 
         # angle arc
