@@ -63,7 +63,7 @@ Align_Face_kb_modify = {
                         'align_to_face' :
                             {'key':'F', 'desc':"Align to", 'var': 'str_align_mode', 'state':2},
                         'orient_dir' :
-                            {'key':'B', 'desc':"Orientation", 'state':4},
+                            {'key':'B', 'desc':"Base Orientation", 'state':4},
 }
 
 class AlignModes(Enum):
@@ -74,6 +74,15 @@ class AlignModes(Enum):
     Y_World = 4
     Z_Object = 5
     Z_World = 6
+
+class SlideProjectMode(Enum):
+    Base = 0
+    Target = 1
+
+Align_Face_kb_slideprojectmode = {
+                        'SlideDir' :
+                            {'key':'N', 'desc':"Projection Direction", 'var':'slideproj_mode'},
+}
 
 Align_Face_kb_snapping = {
                         'snapping' :
@@ -183,6 +192,9 @@ class MB_OT_ALIGN_FACE(Operator):
         self.align_mode = AlignModes.Face.name
         self.str_align_mode = AlignModes.Face.name
 
+        self.slideproj_mode = SlideProjectMode.Base.name
+        self.int_slide_dir = None
+
         self.mouse_loc = Vector((0,0))
         self.start_loc = self.mouse_loc
 
@@ -253,13 +265,24 @@ class MB_OT_ALIGN_FACE(Operator):
             self.mode = Modes(self.mode_index).name
 
 
-        # Projection/Slide mode - orientation normal 
+        # Projection/Slide mode
         if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
+
+            # orientation normal 
             if event.type == Align_Face_kb_modify['orient_dir']['key'] and event.value == 'PRESS':
                 if self.modify != Modify.Projection_Dir.value:
                     self.modify = Modify.Projection_Dir.value
                 else:
                     self.modify = Modify.Mod_None.value
+
+            # Slide fallback direction / Projection directiion
+            if event.type == Align_Face_kb_slideprojectmode['SlideDir']['key'] and event.value == 'PRESS':
+                if self.slideproj_mode != SlideProjectMode.Target.name:
+                    self.slideproj_mode = SlideProjectMode.Target.name
+                    self.int_slide_dir = self.face_normal
+                else:
+                    self.slideproj_mode = SlideProjectMode.Base.name
+                    self.int_slide_dir = None
 
         # Any mode - angle
         if event.type == Align_Face_kb_modify['angle']['key'] and event.value == 'PRESS':
@@ -335,14 +358,15 @@ class MB_OT_ALIGN_FACE(Operator):
             self.new_edge_verts_coors = rotate_verts(self.selected_edge_verts, self.angle, self.rot_axis, self.rot_edge)
 
         if self.mode == Modes.Project.name:
-            self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
-            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal)
+            self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, project_override = self.int_slide_dir)
+            self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, project_override = self.int_slide_dir)
 
         if self.mode == Modes.Slide.name:
-            self.slide_dirs = get_slide_directions(self.selected_verts, self.normal, self.face_normal)
+
+            self.slide_dirs = get_slide_directions(self.selected_verts, self.normal, self.int_slide_dir)
             self.new_point_coors = project_verts(self.selected_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.slide_dirs)
 
-            self.edge_slide_dirs = get_slide_directions(self.selected_edge_verts, self.normal, self.face_normal)
+            self.edge_slide_dirs = get_slide_directions(self.selected_edge_verts, self.normal, self.int_slide_dir)
             self.new_edge_verts_coors = project_verts(self.selected_edge_verts, self.angle, self.rot_pivot, self.rot_axis, self.normal, self.edge_slide_dirs)    
 
         # update normals
@@ -354,7 +378,6 @@ class MB_OT_ALIGN_FACE(Operator):
             face_normal, _ = face_normal_cursor(self.mouse_loc, context)
             if face_normal:
                 self.normal = normal_world_to_loc(face_normal, self.obj)
-                print
 
         if self.modify == Modify.Angle.value:
 
@@ -392,6 +415,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
+
+                # if abs(self.angle) > 90:
+                #     self.angle = 180-abs(self.angle)
+
                 self.str_angle = "%.2f" %self.angle
 
             self.face_normal = face_normal
@@ -612,6 +639,16 @@ class MB_OT_ALIGN_FACE(Operator):
             texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
 
         texts.append("")
+
+        # Slide/Projection - slide projection direction
+        if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
+            for _, keys in Align_Face_kb_slideprojectmode.items():
+                status = ""
+                if keys.get('var'):
+                    status = kb_value.format(var=getattr(self, keys['var']))
+                texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
+
+                texts.append("")
 
         # snapping
         for _, keys in Align_Face_kb_snapping.items():

@@ -7,7 +7,7 @@ from ...utility.math import rotate_point_around_axis
 
 from collections import OrderedDict
 
-def project_verts(verts, angle, pivot, rot_axis, normal, directions=[]):
+def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], project_override=None):
 
     new_point_coors = []
     # old_point_coors = [vert.co for vert in verts]
@@ -23,6 +23,8 @@ def project_verts(verts, angle, pivot, rot_axis, normal, directions=[]):
         # in projection mode
         else:
             dir = normal
+            if project_override:
+                dir = project_override
 
         diff = intersect_line_plane(vert_co, vert_co+dir, pivot, normal)
         if not diff:
