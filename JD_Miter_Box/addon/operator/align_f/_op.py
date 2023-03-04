@@ -218,12 +218,16 @@ class MB_OT_ALIGN_FACE(Operator):
 
             self.remove_shaders(context)
 
-            for index, vert in enumerate(self.selected_verts):
-                vert.co = self.new_point_coors[index]
+            # for index, vert in enumerate(self.selected_verts):
+            #     vert.co = self.new_point_coors[index]
 
-            for index, vert in enumerate(self.selected_verts):
-                vert.normal = self.selected_vert_normals[index]
-            self.bm.normal_update()
+            for index, coor in self.new_point_coors:
+                self.bm.verts[index].co = coor
+
+            # TODO : convert rotate normals function to new list of tuples format
+            # for index, vert in enumerate(self.selected_verts):
+            #     vert.normal = self.selected_vert_normals[index]
+            # self.bm.normal_update()
 
             bmesh.update_edit_mesh(self.objdata)
 
@@ -485,15 +489,10 @@ class MB_OT_ALIGN_FACE(Operator):
 
             self.slide_edges = []
 
-            # for vert in self.selected_verts:
+            for index, pos in self.new_point_coors:
 
-            #     self.slide_edges.append(position - (self.slide_dirs[vert.index]*0.1))
-            #     self.slide_edges.append(position + (self.slide_dirs[vert.index]*0.1))
-
-            # for index, position in enumerate(self.new_point_coors):
-
-            #     self.slide_edges.append(position - (self.slide_dirs[index]*0.1))
-            #     self.slide_edges.append(position + (self.slide_dirs[index]*0.1))
+                self.slide_edges.append(pos - (self.slide_dirs[index]*0.1))
+                self.slide_edges.append(pos + (self.slide_dirs[index]*0.1))
             
             # slide edges
 
@@ -522,13 +521,12 @@ class MB_OT_ALIGN_FACE(Operator):
         # --------------------------------------------------
 
         # new point positions
-        coors = self.new_point_coors
+        coors = [tup[1] for tup in self.new_point_coors]
         world_coors = coors_loc_to_world(coors, self.obj)
         points(world_coors, self.s_vertex, self.c_preview_geo)
 
         # new edge positions
-
-        coors = self.new_edge_verts_coors
+        coors = [tup[1] for tup in self.new_edge_verts_coors]
         world_coors = coors_loc_to_world(coors, self.obj)
         edges(world_coors, 1, self.c_preview_geo)
 

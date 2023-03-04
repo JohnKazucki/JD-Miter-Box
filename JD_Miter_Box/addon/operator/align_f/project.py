@@ -5,7 +5,7 @@ from mathutils.geometry import intersect_line_plane
 
 from ...utility.math import rotate_point_around_axis
 
-
+from collections import OrderedDict
 
 def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], align_dir=None):
 
@@ -51,6 +51,6 @@ def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], align_di
 
         new_coor += v_offset
 
-        new_point_coors.append(new_coor)
+        new_point_coors.append((vert.index, new_coor))
 
     return new_point_coors
