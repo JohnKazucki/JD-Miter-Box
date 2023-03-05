@@ -444,6 +444,10 @@ class MB_OT_ALIGN_FACE(Operator):
                     self.angle = -(180-self.angle)
 
                 self.update_angle()
+            
+            if not face_normal:
+                self.angle = 0
+                self.update_angle()
 
             self.face_normal = face_normal
 
