@@ -30,6 +30,7 @@ from ...utility.interaction import face_normal_cursor
 
 from ...utility.drawing.primitives import edges, plane_center, line, points, line_2d, arc, line_p2p
 from ...utility.drawing.view import mouse_2d_to_3d
+from ...utility.drawing.tool_tip import build_tooltips
 from ...utility.jdraw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 
@@ -642,6 +643,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
         # TODO : generalize variable drawing into functions
 
+        # - TEXT
+
         texts = []
 
         kb_string = "({key}) {desc}"
@@ -657,39 +660,17 @@ class MB_OT_ALIGN_FACE(Operator):
         texts.append("")
 
         # modify keys
-        for _, keys in Align_Face_kb_modify.items():
-            value = ""
-            if keys.get('var'):
-                value = str(getattr(self, keys['var']))
-            state = ""
-            if keys.get('state') == self.modify:
-                state = " - Modifying"
-            
-            status = kb_value.format(var=value + state)
-            texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
-
+        build_tooltips(self, Align_Face_kb_modify, texts, 
+                        show_status=True, status=self.modify)
         texts.append("")
 
         # Slide/Projection - slide projection direction
         if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
-            for _, keys in Align_Face_kb_slideprojectmode.items():
-                status = ""
-                if keys.get('var'):
-                    status = kb_value.format(var=getattr(self, keys['var']))
-                texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
-
-                texts.append("")
+            build_tooltips(self, Align_Face_kb_slideprojectmode, texts)
+            texts.append("")
 
         # snapping
-        for _, keys in Align_Face_kb_snapping.items():
-            status = ""
-            if keys.get('var'):
-                if getattr(self, keys['var']):
-                    state = "Enabled"
-                else:
-                    state = "Disabled"
-                status = kb_value.format(var=state)
-            texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
+        build_tooltips(self, Align_Face_kb_snapping, texts)
 
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]-15, strings=texts, size=15)
         textbox.draw()
@@ -701,10 +682,7 @@ class MB_OT_ALIGN_FACE(Operator):
         # angle offsets
         texts = []
 
-        kb_string = "({key}) {desc}"
-
-        for _, keys in Align_Face_kb_anglemod.items():
-            texts.append(kb_string.format(key=keys['key'], desc=keys['desc']))
+        build_tooltips(self, Align_Face_kb_anglemod, texts, show_value=False)
 
         # texts.append("")
 
@@ -714,6 +692,7 @@ class MB_OT_ALIGN_FACE(Operator):
         tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]-220, string="angle quick adjust", size=13)
         tool_header.draw()
 
+        # --------------------------------------------------
 
 
         # interaction UI
