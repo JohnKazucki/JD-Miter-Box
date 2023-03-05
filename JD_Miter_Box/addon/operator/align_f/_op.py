@@ -66,6 +66,13 @@ Align_Face_kb_modify = {
                             {'key':'B', 'desc':"Base Orientation", 'state':4},
 }
 
+Align_Face_kb_anglemod = {
+                        'offset_neg' :
+                            {'key':'O', 'desc':"Angle - 45"},
+                        'offset_plus' :
+                            {'key':'P', 'desc':"Angle + 45"},
+} 
+
 class AlignModes(Enum):
     Face = 0
     X_Object = 1
@@ -198,7 +205,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.mouse_loc = Vector((0,0))
         self.start_loc = self.mouse_loc
 
-        self.angle_sens = 5
+        self.angle_sens = 3
 
         self.snapping = False
         # self.snap_abs = True
@@ -290,6 +297,16 @@ class MB_OT_ALIGN_FACE(Operator):
                 self.curr_angle = self.angle
             else:
                 self.modify = Modify.Mod_None.value
+
+        # TODO : implement this in a nicer way, v0.0.5+ feature
+        # Angle mode - quick angle offsets
+        if event.type == Align_Face_kb_anglemod['offset_neg']['key'] and event.value == 'PRESS':
+            self.angle -= 45
+            self.update_angle()
+
+        if event.type == Align_Face_kb_anglemod['offset_plus']['key'] and event.value == 'PRESS':
+            self.angle += 45
+            self.update_angle()
 
         # Any mode - rotation axis
         if event.type == Align_Face_kb_modify['rot_axis']['key'] and event.value == 'PRESS':
@@ -391,7 +408,7 @@ class MB_OT_ALIGN_FACE(Operator):
             else:
                 self.angle = self.curr_angle + mouse_input
 
-            self.str_angle = "%.2f" %self.angle
+            self.update_angle()
 
         if self.modify == Modify.Axis.value:
             self.rot_edge, self.rot_axis, self.rot_pivot = update_axis(self, context)
@@ -419,9 +436,19 @@ class MB_OT_ALIGN_FACE(Operator):
                 if self.angle > 90:
                     self.angle = -(180-self.angle)
 
-                self.str_angle = "%.2f" %self.angle
+                self.update_angle()
 
             self.face_normal = face_normal
+
+    def update_angle(self):
+
+        if self.angle < -180:
+            self.angle = 360+self.angle
+
+        if self.angle > 180:
+            self.angle = -(360-self.angle)
+
+        self.str_angle = "%.2f" %self.angle
 
 
     def update_input_Face_Align_Axis(self):
@@ -667,6 +694,26 @@ class MB_OT_ALIGN_FACE(Operator):
         tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]+0, string="Align Face", size=18)
         tool_header.draw()
 
+        
+        # angle offsets
+        texts = []
+
+        kb_string = "({key}) {desc}"
+
+        for _, keys in Align_Face_kb_anglemod.items():
+            texts.append(kb_string.format(key=keys['key'], desc=keys['desc']))
+
+        # texts.append("")
+
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]-230, strings=texts, size=12)
+        textbox.draw()
+
+        tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]-220, string="angle offsets", size=13)
+        tool_header.draw()
+
+
+
+        # interaction UI
         if self.modify == Modify.Angle.value:
             line_2d(self.start_loc, Vector((self.mouse_loc[0], self.start_loc[1])), 2, self.c_selected_geo_sec)
 
