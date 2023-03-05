@@ -15,9 +15,9 @@ bl_info = {
     "name" : "Miter Box",
     "author" : "João Desager",
     "description" : "Collection of Mesh Editing tools",
-    "blender" : (3, 3, 2),
-    "version" : (0, 0, 4),
-    "location" : "Edit Mode -> Context Menu, N Panel > MB",
+    "blender" : (3, 3, 4),
+    "version" : (0, 0, 5),
+    "location" : "Edit Mode > Context Menu > MiterBox, N Panel > MB",
     "warning" : "",
     "category" : "Generic"
 }
