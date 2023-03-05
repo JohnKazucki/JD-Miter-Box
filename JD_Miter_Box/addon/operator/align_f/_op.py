@@ -554,8 +554,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
             for index, pos in self.new_point_coors:
 
-                self.slide_edges.append(pos - (self.slide_dirs[index]*0.2*gizmo_size))
-                self.slide_edges.append(pos + (self.slide_dirs[index]*0.2*gizmo_size))
+                self.slide_edges.append(pos - (self.slide_dirs[index]*0.1*gizmo_size))
+                self.slide_edges.append(pos + (self.slide_dirs[index]*0.1*gizmo_size))
             
             # slide edges
 
