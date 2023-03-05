@@ -46,6 +46,13 @@ def get_slide_directions(verts, normal, align_dir=None):
                     max_dot = dir_dot
                     dir = dir_option
 
+            # if the best connected edge to slide along is nearly perpendicular with the chosen normal, 
+            # use the normal as slide direction instead 
+            if abs(dir.dot(normal)) < 0.01:
+                dir = normal
+                if align_dir:
+                    dir = align_dir
+
         # append the slide direction to dirs list
         slide_directions[vert.index] = dir
 
