@@ -125,13 +125,12 @@ class MB_OT_ALIGN_FACE(Operator):
             return {'CANCELLED'}
 
         self.setup(event)
+        self.update()
 
         self.draw_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_3d, (context,), 'WINDOW', 'POST_VIEW')
         self.draw_UI_handle = bpy.types.SpaceView3D.draw_handler_add(self.safe_draw_shader_2d, (context, ), 'WINDOW', 'POST_PIXEL')
             
         context.window_manager.modal_handler_add(self)
-
-        self.update()
 
         return {"RUNNING_MODAL"}
 
