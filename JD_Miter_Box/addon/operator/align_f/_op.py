@@ -364,6 +364,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
             self.str_align_mode = self.format_Face_Align_Mode_Text()
 
+            self.rot_pivot = self.rot_edge[0].co + (self.rot_edge[0].co - self.rot_edge[1].co)/2
+
     def format_Face_Align_Mode_Text(self):
         parts = self.align_mode.split("_")
 

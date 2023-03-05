@@ -25,6 +25,7 @@ def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], project_
             dir = normal
             if project_override:
                 dir = project_override
+                normal = project_override
 
         diff = intersect_line_plane(vert_co, vert_co+dir, pivot, normal)
         if not diff:
