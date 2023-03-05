@@ -4,6 +4,7 @@ MB is a set of tools designed to make accurate polymodelling quicker and easier.
 It is currently developed for Blender 3.3.2, but should work for any newer version too. <br />
 
 ![](https://github.com/JohnKazucki/JD-Miter-Box/blob/main/git_resources/MiterBox%20-%20Align%20Edge%20-%20Slide.gif) <br />
+![](https://github.com/JohnKazucki/JD-Miter-Box/blob/main/git_resources/Align%20Face%20-%20Projection%20Direction.gif) <br />
 
 # Releases
 
