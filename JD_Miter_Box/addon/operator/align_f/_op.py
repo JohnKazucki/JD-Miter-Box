@@ -511,6 +511,21 @@ class MB_OT_ALIGN_FACE(Operator):
 
     def draw_shaders_3d(self, context):
         
+        # selection size
+
+        coors = [v.co for v in self.selected_edge_verts]
+
+        coors_x = [coor[0] for coor in coors]
+        min_x = min(coors_x)
+        max_x = max(coors_x)
+        coors_y = [coor[1] for coor in coors]
+        min_y = min(coors_y)
+        max_y = max(coors_y)
+
+        size_x = abs(max_x-min_x)
+        size_y = abs(max_y-min_y)
+
+        gizmo_size = max([size_x, size_y])/2
 
         # projection/slide orientation direction
         if self.mode == Modes.Project.name or self.mode == Modes.Slide.name:
@@ -526,22 +541,8 @@ class MB_OT_ALIGN_FACE(Operator):
             center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
             center = coor_loc_to_world(center, self.obj)
 
-            coors = [v.co for v in self.selected_edge_verts]
-
-            coors_x = [coor[0] for coor in coors]
-            min_x = min(coors_x)
-            max_x = max(coors_x)
-            coors_y = [coor[1] for coor in coors]
-            min_y = min(coors_y)
-            max_y = max(coors_y)
-
-            size_x = abs(max_x-min_x)
-            size_y = abs(max_y-min_y)
-
-            size = max([size_x, size_y])/2
-
-            plane_center(center, axis_x, axis_y, axis_z, size, size, self.c_selected_geo_sec)
-            line(center, axis_x, axis_y, axis_z, size/2, 2, self.c_selected_geo)
+            plane_center(center, axis_x, axis_y, axis_z, gizmo_size, gizmo_size, self.c_selected_geo_sec)
+            line(center, axis_x, axis_y, axis_z, gizmo_size/2, 2, self.c_selected_geo)
         # --------------------------------------------------
 
         # slide direction edges
@@ -551,8 +552,8 @@ class MB_OT_ALIGN_FACE(Operator):
 
             for index, pos in self.new_point_coors:
 
-                self.slide_edges.append(pos - (self.slide_dirs[index]*0.1))
-                self.slide_edges.append(pos + (self.slide_dirs[index]*0.1))
+                self.slide_edges.append(pos - (self.slide_dirs[index]*0.2*gizmo_size))
+                self.slide_edges.append(pos + (self.slide_dirs[index]*0.2*gizmo_size))
             
             # slide edges
 
@@ -625,7 +626,7 @@ class MB_OT_ALIGN_FACE(Operator):
         center = self.rot_edge[0].co + (self.rot_edge[1].co-self.rot_edge[0].co)/2
         center = coor_loc_to_world(center, self.obj)
 
-        arc(center, axis_x, axis_y, axis_z, 1, self.angle, 2, self.c_selected_geo)
+        arc(center, axis_x, axis_y, axis_z, gizmo_size, self.angle, 2, self.c_selected_geo)
 
 
 
