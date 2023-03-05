@@ -413,8 +413,11 @@ class MB_OT_ALIGN_FACE(Operator):
             if face_normal:
                 self.angle = angle_between_faces(self.rot_axis, self.normal, face_normal)
 
-                # if abs(self.angle) > 90:
-                #     self.angle = 180-abs(self.angle)
+                if self.angle < -90:
+                    self.angle = 180+self.angle
+
+                if self.angle > 90:
+                    self.angle = -(180-self.angle)
 
                 self.str_angle = "%.2f" %self.angle
 

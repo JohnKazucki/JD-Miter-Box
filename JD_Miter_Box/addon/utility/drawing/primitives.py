@@ -72,6 +72,22 @@ def line_p2p(start, end, thickness, color):
     shader_line.uniform_float("color", color)
     batch_line.draw(shader_line)
 
+    gpu.state.line_width_set(1)
+
+
+def lines_p2p(coor_pairs, thickness, color):
+
+# LINES
+    gpu.state.line_width_set(thickness)
+
+    shader_line = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+    batch_line = batch_for_shader(shader_line, 'LINES', {"pos": coor_pairs})
+
+    shader_line.bind()
+    shader_line.uniform_float("color", color)
+    batch_line.draw(shader_line)
+
+    gpu.state.line_width_set(1)
     
 
 
@@ -150,7 +166,11 @@ def arc(center, axis_x, axis_y, axis_z, radius, angle, thickness, color):
 
         gpu.state.line_width_set(1)    
 
-        # POINTS
+        
         if world_coors:
+            # POINTS
             point_coors = [world_coors[0], world_coors[-1]]
             points(point_coors, thickness*3, color)
+
+            line_coors = [center, world_coors[0], center, world_coors[-1]]
+            lines_p2p(line_coors, thickness/2, color)
