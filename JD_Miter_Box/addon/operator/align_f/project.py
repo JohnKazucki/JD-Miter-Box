@@ -44,9 +44,9 @@ def project_verts(verts, angle, pivot, rot_axis, normal, directions=[], project_
     
         new_coor = intersect_line_plane(vert_co, vert_co+dir, pivot, plane_normal)
         if not new_coor:
-            new_coor = Vector((0,0,0))
-
-        new_coor += v_offset
+            new_coor = vert_co
+        else:
+            new_coor += v_offset
 
         new_point_coors.append((vert.index, new_coor))
 
