@@ -151,7 +151,7 @@ class MB_OT_ALIGN_FACE(Operator):
         self.rot_edge = [v for v in self.selected_edges[0].verts]
         if self.bm.select_mode == {'EDGE'}:
             self.rot_edge = [v for v in self.bm.select_history.active.verts]
-        
+       
         self.rot_axis = self.rot_edge[0].co - self.rot_edge[1].co
         self.rot_axis.normalize()
         self.rot_pivot = self.rot_edge[0].co + (self.rot_edge[0].co - self.rot_edge[1].co)/2
@@ -564,25 +564,6 @@ class MB_OT_ALIGN_FACE(Operator):
             edges(world_coors, 1, self.c_preview_geo)
         # --------------------------------------------------
 
-
-        # rotation axis
-
-        gpu.state.line_width_set(3)
-
-        coors = [v.co for v in self.rot_edge]
-        world_coors = coors_loc_to_world(coors, self.obj)
-
-        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
-
-        shader_moving_lines.bind()
-        shader_moving_lines.uniform_float("color", self.c_active_geo)
-        batch_moving_lines.draw(shader_moving_lines)
-
-        gpu.state.line_width_set(1)
-
-        # --------------------------------------------------
-
         # new point positions
         coors = [tup[1] for tup in self.new_point_coors]
         world_coors = coors_loc_to_world(coors, self.obj)
@@ -613,6 +594,24 @@ class MB_OT_ALIGN_FACE(Operator):
             line_p2p(start, start+dir, 2, self.c_face_align_dir)
 
             gpu.state.blend_set('NONE')
+
+        # rotation axis
+
+        gpu.state.line_width_set(3)
+
+        coors = [v.co for v in self.rot_edge]
+        world_coors = coors_loc_to_world(coors, self.obj)
+
+        shader_moving_lines = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
+
+        shader_moving_lines.bind()
+        shader_moving_lines.uniform_float("color", self.c_active_geo)
+        batch_moving_lines.draw(shader_moving_lines)
+
+        gpu.state.line_width_set(1)
+
+        # --------------------------------------------------
 
 
         # angle arc
