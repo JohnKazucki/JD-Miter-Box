@@ -10,7 +10,8 @@ from bpy_extras.view3d_utils import location_3d_to_region_2d
 import traceback
 from enum import Enum
 
-from ..utility.draw.core import JDraw_Text_Box_Multi
+from ..utility.addon import get_prefs
+from ..utility.jdraw.core import JDraw_Text_Box_Multi, JDraw_Text
 
 from mathutils import Vector
 from mathutils.geometry import intersect_line_line
@@ -53,9 +54,9 @@ class MB_OT_ALIGN(Operator):
 
     @classmethod
     def poll(cls, context):
-        if context.active_object.mode == 'EDIT' and len(context.selected_objects) == 1:
-
-            return True
+        if context.active_object:
+            if context.active_object.mode == 'EDIT' and len(context.selected_objects) == 1:
+                return True
 
     def invoke(self, context, event):
 
@@ -171,6 +172,8 @@ class MB_OT_ALIGN(Operator):
                 # not needed I think, but doesn't hurt to free the bmesh even if we didn't edit it
                 bmesh.update_edit_mesh(self.objdata)
                 return {'FINISHED'}
+
+            self.bm.normal_update()
 
             self.closest_active_vert.co = self.new_vert_loc
             bmesh.update_edit_mesh(self.objdata)
@@ -394,12 +397,21 @@ class MB_OT_ALIGN(Operator):
 
     def draw_shaders_3d(self, context):
 
-        # white
-        para_edge_color = (.9, 1, .9, 1.0)
+        prefs = get_prefs()
+        c_preview_geo = prefs.color.c_preview_geo
+        c_selected_geo = prefs.color.c_selected_geo
+        c_selected_geo_sec = prefs.color.c_selected_geo_sec
+        c_active_geo = prefs.color.c_active_geo
+        c_error_geo = prefs.color.c_error_geo
+        c_error_geo_sec = prefs.color.c_error_geo_sec
 
+        para_edge_color = c_active_geo
         if self.error:
-            # redish
-            para_edge_color = (.9, .1, .3, 1.0)
+            para_edge_color = c_error_geo
+
+        slide_edge_color = c_selected_geo
+        if self.error:
+            slide_edge_color = c_error_geo_sec
 
         # LINES
         # active edge, the guide edge
@@ -428,7 +440,7 @@ class MB_OT_ALIGN(Operator):
         batch_active = batch_for_shader(shader_active, 'LINES', {"pos": world_coors})
 
         shader_active.bind()
-        shader_active.uniform_float("color", (1, 1, 0, 1.0))
+        shader_active.uniform_float("color", c_selected_geo)
         batch_active.draw(shader_active)
 
 
@@ -443,12 +455,12 @@ class MB_OT_ALIGN(Operator):
         batch_dots = batch_for_shader(shader_dots, 'POINTS', {"pos": [world_coors]})
 
         shader_dots.bind()
-        shader_dots.uniform_float("color", (1, 1, 0, 1.0))
+        shader_dots.uniform_float("color", c_selected_geo)
         batch_dots.draw(shader_dots)
 
         gpu.state.point_size_set(1)
 
-        if not self.error and self.mode == 'Slide':
+        if self.mode == 'Slide':
 
             # LINES
             # possible guide edges along which edge will be moved to make it parallel
@@ -460,7 +472,7 @@ class MB_OT_ALIGN(Operator):
             batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
             shader_moving_lines.bind()
-            shader_moving_lines.uniform_float("color", (.7, .7, 0, 1.0))
+            shader_moving_lines.uniform_float("color", c_selected_geo_sec)
             batch_moving_lines.draw(shader_moving_lines)
 
 
@@ -475,7 +487,7 @@ class MB_OT_ALIGN(Operator):
             batch_moving_lines = batch_for_shader(shader_moving_lines, 'LINES', {"pos": world_coors})
 
             shader_moving_lines.bind()
-            shader_moving_lines.uniform_float("color", para_edge_color)
+            shader_moving_lines.uniform_float("color", slide_edge_color)
             batch_moving_lines.draw(shader_moving_lines)
 
             gpu.state.line_width_set(1)
@@ -545,5 +557,8 @@ class MB_OT_ALIGN(Operator):
                 status = kb_status.format(var=getattr(self, keys['var']))
             texts.append(kb_string.format(key=keys['key'], desc=keys['desc'])+status)
 
-        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+10, y=self.mouse_loc[1]-10, strings=texts, size=15)
+        textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]-15, strings=texts, size=15)
         textbox.draw()
+
+        tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]+0, string="Align Edge", size=18)
+        tool_header.draw()

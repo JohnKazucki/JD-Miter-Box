@@ -1,9 +1,13 @@
 import bpy
 
 from .align import MB_OT_ALIGN
+# from .align_face import MB_OT_ALIGN_FACE
+from .align_f._op import MB_OT_ALIGN_FACE
+
 
 classes = (
     MB_OT_ALIGN,
+    MB_OT_ALIGN_FACE,
 )
 
 
