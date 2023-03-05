@@ -67,6 +67,8 @@ Align_Face_kb_modify = {
 }
 
 Align_Face_kb_anglemod = {
+                        'reset_angle' :
+                            {'key':'I', 'desc':"Reset Angle"},
                         'offset_neg' :
                             {'key':'O', 'desc':"Angle - 45"},
                         'offset_plus' :
@@ -299,12 +301,21 @@ class MB_OT_ALIGN_FACE(Operator):
                 self.modify = Modify.Mod_None.value
 
         # TODO : implement this in a nicer way, v0.0.5+ feature
-        # Angle mode - quick angle offsets
+        # Any mode - quick angle adjusts
+        if event.type == Align_Face_kb_anglemod['reset_angle']['key'] and event.value == 'PRESS':
+            if self.modify == Modify.Angle.value:
+                self.modify = Modify.Mod_None.value
+            self.angle = 0
+            self.update_angle()
         if event.type == Align_Face_kb_anglemod['offset_neg']['key'] and event.value == 'PRESS':
+            if self.modify == Modify.Angle.value:
+                self.modify = Modify.Mod_None.value
             self.angle -= 45
             self.update_angle()
 
         if event.type == Align_Face_kb_anglemod['offset_plus']['key'] and event.value == 'PRESS':
+            if self.modify == Modify.Angle.value:
+                self.modify = Modify.Mod_None.value
             self.angle += 45
             self.update_angle()
 
@@ -708,7 +719,7 @@ class MB_OT_ALIGN_FACE(Operator):
         textbox = JDraw_Text_Box_Multi(x=self.mouse_loc[0]+15, y=self.mouse_loc[1]-230, strings=texts, size=12)
         textbox.draw()
 
-        tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]-220, string="angle offsets", size=13)
+        tool_header = JDraw_Text(x=self.mouse_loc[0]+20, y=self.mouse_loc[1]-220, string="angle quick adjust", size=13)
         tool_header.draw()
 
 
