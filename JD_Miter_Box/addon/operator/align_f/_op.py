@@ -134,6 +134,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
         return {"RUNNING_MODAL"}
 
+    # - SETUP
     def setup(self, event):
 
         self.selected_edges = get_selected_edges(self.bm)
@@ -172,7 +173,6 @@ class MB_OT_ALIGN_FACE(Operator):
         # fix rotation direction on setup, in case rotation axis is never adjusted
         self.rot_axis = fix_rot_dir(self.selected_verts, self.rot_axis, self.rot_edge, self.normal)
 
-
     def setup_colors(self):
         prefs = get_prefs()
 
@@ -188,7 +188,6 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.c_face_align_dir = self.c_selected_geo_sec
         
-
     def setup_input(self):
         # input management variables
         default_mode = Modes.Slide
@@ -214,10 +213,9 @@ class MB_OT_ALIGN_FACE(Operator):
         self.face_normal = None
         self.loc = None
 
-    
     def setup_UI(self):
         self.str_angle = "%.2f" %0
-
+    # ------------------------------
 
     def modal(self, context, event):
 
@@ -345,7 +343,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
         return {"RUNNING_MODAL"}
 
-
+    # - UPDATE
     def update_Face_Align_Axis(self, event):
 
         axis_modes = {
@@ -396,7 +394,6 @@ class MB_OT_ALIGN_FACE(Operator):
         # update normals
         self.selected_vert_normals = rotate_normals(self.selected_vert_normals, self.angle, self.rot_axis)    
 
-
     def update_input(self, context):
         if self.modify == Modify.Projection_Dir.value:
             face_normal, _ = face_normal_cursor(self.mouse_loc, context)
@@ -408,9 +405,6 @@ class MB_OT_ALIGN_FACE(Operator):
             mouse_input = (self.mouse_loc - self.start_loc)[0]/self.angle_sens
 
             # TODO : relative snapping
-            # if self.snap_abs and self.snapping:
-            #     self.angle = round_to_integer(self.curr_angle, 5) + round_to_integer(mouse_input, 5)
-            # elif self.snapping
 
             # absolute snapping
             if self.snapping:
@@ -460,7 +454,6 @@ class MB_OT_ALIGN_FACE(Operator):
 
         self.str_angle = "%.2f" %self.angle
 
-
     def update_input_Face_Align_Axis(self):
 
         face_normal = None
@@ -488,7 +481,7 @@ class MB_OT_ALIGN_FACE(Operator):
 
 
         return face_normal
-
+    # ------------------------------
         
 
 
